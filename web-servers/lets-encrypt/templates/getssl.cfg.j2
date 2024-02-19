@@ -1,0 +1,70 @@
+
+{% if lets_encrypt_dry_run %}
+# The staging server is best for testing (hence set as default)
+CA="https://acme-staging-v02.api.letsencrypt.org"
+# This server issues full certificates, however has rate limits
+#CA="https://acme-v02.api.letsencrypt.org"
+{% else %}
+# The staging server is best for testing (hence set as default)
+#CA="https://acme-staging-v02.api.letsencrypt.org"
+# This server issues full certificates, however has rate limits
+CA="https://acme-v02.api.letsencrypt.org"
+{% endif %}
+
+# The agreement that must be signed with the CA, if not defined the default agreement will be used
+#AGREEMENT=""
+
+# Set an email address associated with your account - generally set at account level rather than domain.
+ACCOUNT_EMAIL="{{ lets_encrypt_email }}"
+ACCOUNT_KEY_LENGTH=4096
+ACCOUNT_KEY="/usr/local/scripts/getssl/.getssl/account.key"
+
+# Account key and private key types - can be rsa, prime256v1, secp384r1 or secp521r1
+#ACCOUNT_KEY_TYPE="rsa"
+PRIVATE_KEY_ALG="rsa"
+#REUSE_PRIVATE_KEY="true"
+
+# Preferred Chain - use an different certificate root from the default
+# This uses wildcard matching so requesting "X1" returns the correct certificate - may need to escape characters
+# Staging options are: "(STAGING) Doctored Durian Root CA X3" and "(STAGING) Pretend Pear X1"
+# Production options are: "ISRG Root X1" and "ISRG Root X2"
+#PREFERRED_CHAIN="\(STAGING\) Pretend Pear X1"
+
+# Uncomment this if you need the full chain file to include the root certificate (Java keystores, Nutanix Prism)
+#FULL_CHAIN_INCLUDE_ROOT="true"
+
+# The command needed to reload apache / nginx or whatever you use.
+# Several (ssh) commands may be given using a bash array:
+# RELOAD_CMD=('ssh:sshuserid@server5:systemctl reload httpd' 'logger getssl for server5 efficient.')
+#RELOAD_CMD=""
+
+# The time period within which you want to allow renewal of a certificate
+#  this prevents hitting some of the rate limits.
+# Creating a file called FORCE_RENEWAL in the domain directory allows one-off overrides
+# of this setting
+RENEW_ALLOW="30"
+
+# Define the server type. This can be https, ftp, ftpi, imap, imaps, pop3, pop3s, smtp,
+# smtps_deprecated, smtps, smtp_submission, xmpp, xmpps, ldaps or a port number which
+# will be checked for certificate expiry and also will be checked after
+# an update to confirm correct certificate is running (if CHECK_REMOTE) is set to true
+SERVER_TYPE="https"
+CHECK_REMOTE="true"
+
+# Use the following 3 variables if you want to validate via DNS
+#VALIDATE_VIA_DNS="true"
+#DNS_ADD_COMMAND=
+#DNS_DEL_COMMAND=
+
+# Unusual configurations (especially split views) may require these.
+# If you have a mixture, these can go in the per-domain getssl.cfg.
+#
+# If you must use an external DNS Server (e.g. due to split views)
+# Specify it here.  Otherwise, the default is to find the zone master.
+# The default will usually work.
+PUBLIC_DNS_SERVER="8.8.8.8"
+
+# If getssl is unable to determine the authoritative nameserver for a domain
+# it will as you to enter AUTH_DNS_SERVER.  This is a server that
+# can answer queries for the zone - a master or a slave, not a recursive server.
+# AUTH_DNS_SERVER="10.0.0.14"

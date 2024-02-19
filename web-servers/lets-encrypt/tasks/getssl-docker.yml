@@ -1,0 +1,139 @@
+---
+
+# Create user and group
+- name: Create a getssl group
+  group:
+    name: getssl
+    state: present
+
+- name: Create a getssl user
+  user:
+    name: getssl
+    state: present
+    shell: /bin/bash
+    home: /usr/local/scripts/getssl
+    group: getssl
+
+# Get User and Group ID
+- name: Get getssl UID
+  command: id -u getssl
+  register: user_id_output
+
+- name: Display the User ID value
+  debug:
+    var: user_id_output.stdout
+
+- name: Get getssl GID
+  command: id -g getssl
+  register: group_id_output
+
+- name: Display the Group ID value
+  debug:
+    var: group_id_output.stdout
+
+# Create Certificate store
+- name: Create getssl certs store 
+  file:
+    path: /etc/letsencrypt/getssl/{{ item }}
+    state: directory
+    owner: getssl
+    group: www-data
+    mode: 0750
+  loop: "{{ lets_encrypt_domains }}"
+
+# Create dir for docker-compose
+- name: Create directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Create Dockerfile directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}/build/getssl/
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Create volumes directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}/volumes/usr/local/scripts/getssl/.getssl
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Add Configs
+  template:
+    src: 'getssl.cfg.j2'
+    dest: '/var/apps/{{ lets_encrypt_acme_client }}/volumes/usr/local/scripts/getssl/.getssl/getssl.cfg'
+
+- name: Create volumes directory for domains
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}/volumes/usr/local/scripts/getssl/.getssl/{{ item }}
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+  loop: "{{ lets_encrypt_domains }}"  
+
+- name: Copy getssl domain configuration file
+  template:
+    src: getssl_domain.cfg.j2
+    dest: /var/apps/{{ lets_encrypt_acme_client }}/volumes/usr/local/scripts/getssl/.getssl/{{ item }}/getssl.cfg
+  vars:
+    target_domain: "{{ item }}"
+  loop: "{{ lets_encrypt_domains }}"
+
+# Create webroot
+- name: Create getssl DNS challenge hook directory
+  file:
+    path: "{{ lets_encrypt_webroot }}"
+    state: directory
+    owner: getssl
+    group: www-data
+    mode: 0750
+
+# Add Dockerfile
+- name: Add Dockerfile
+  template:
+    src: 'getssl-dockerfile.j2'
+    dest: '/var/apps/{{ lets_encrypt_acme_client }}/build/getssl/Dockerfile'
+  vars:
+    docker_user_id: "{{ user_id_output.stdout }}"
+    docker_group_id: "{{ group_id_output.stdout }}"
+
+# Setup Docker-compose
+- name: Add docker-compose.yml
+  template:
+    src: 'getssl-docker-compose.yml.j2'
+    dest: '/var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml'
+  with_items: "{{ lets_encrypt_domains }}"
+
+- name: Docker-compose build
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml build"
+
+- name: Docker-compose up
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml up -d"
+
+# Create SSL certificates
+- name: Create certs
+  command: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml exec -u getssl getssl sh -c '/usr/local/scripts/getssl/getssl {{ item }}'"
+  notify: 
+    - Reload Nginx
+  loop: "{{ lets_encrypt_domains }}"
+
+# Create cron
+- name: Add cron job for getssl renewal (if configured).
+  cron:
+    name: getssl automatic renewal.
+    job: "date >> /var/log/getssl/getssl.log && {{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml exec -u getssl getssl sh -c '/usr/local/scripts/getssl/getssl -u -a' >> /var/log/getssl/getssl.log 2>&1"
+    minute: "{{ lets_encrypt_cron_minute }}"
+    hour: "{{ lets_encrypt_cron_hour }}"
+    user: "getssl"
+  when: lets_encrypt_auto_renew

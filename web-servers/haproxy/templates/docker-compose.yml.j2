@@ -1,0 +1,23 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  haproxy:
+    container_name: haproxy
+    image: haproxy:{{ haproxy_docker_version }}
+    volumes:
+      - /var/apps/haproxy/volumes/conf:/usr/local/etc/haproxy
+    ports:
+{% for listen in haproxy_listen %}
+{% for bind in listen.bind %}
+      - {{ ansible_ssh_host | default(ansible_host) }}:{{ bind.split(':')[1] }}:{{ bind.split(':')[1] }}
+{% endfor %}
+{% endfor %}
+    networks:
+      vm_net:
+        ipv4_address: {{ haproxy_docker_ip }}
+    restart: always
+networks:
+  vm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ haproxy_docker_subnet }}

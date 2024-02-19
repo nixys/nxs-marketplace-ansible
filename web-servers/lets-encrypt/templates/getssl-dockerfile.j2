@@ -1,0 +1,22 @@
+FROM debian:stable-slim
+
+RUN apt-get update \
+  && apt-get install -y sudo wget curl dnsutils \
+  && groupadd -g {{ docker_group_id }} getssl \
+  && useradd -g {{ docker_group_id }} -u {{ docker_user_id }} -s /bin/bash -d /usr/local/scripts/getssl getssl \
+  && mkdir -p /usr/local/scripts/getssl \
+  && chmod o+x /usr/local/scripts \
+  && chown -R getssl: /usr/local/scripts/getssl/ \
+  && chmod 750 /usr/local/scripts/getssl \
+  && cd /usr/local/scripts/getssl \
+  && sudo -u getssl sh -c 'wget -O /usr/local/scripts/getssl/getssl https://raw.githubusercontent.com/srvrco/getssl/master/getssl -P /usr/local/scripts/getssl' \
+  && chmod 700 /usr/local/scripts/getssl/getssl \
+  && sudo -u getssl sh -c '/usr/local/scripts/getssl/getssl' \
+{% for domain in lets_encrypt_domains %}
+  && sudo -u getssl sh -c '/usr/local/scripts/getssl/getssl -c {{ domain }}' \
+{% endfor %}
+
+
+WORKDIR /usr/local/scripts/getssl
+
+CMD ["sh"]

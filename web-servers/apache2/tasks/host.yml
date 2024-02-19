@@ -1,0 +1,106 @@
+---
+
+# Install packages
+- name: Install packages for Debian 9 and higher
+  when: ansible_lsb.major_release|int >= 9
+  apt:
+    pkg: ['apache2','libapache2-mpm-itk','w3m']
+    update_cache: true
+  notify:
+    - Start Apache2
+
+# Configuration
+- name: Set apache2.conf
+  template:
+    src: '{{ item }}'
+    dest: /etc/apache2/apache2.conf
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - ../templates/etc/apache2/apache2.conf.j2
+  notify:
+    - Restart Apache2
+
+- name: Set mpm_prefork.conf
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release|int >= 8
+  copy: src='etc/apache2/mods-available/mpm_prefork.conf' dest='/etc/apache2/mods-available/mpm_prefork.conf' owner=root group=root mode=0644
+  notify:
+    - Restart Apache2
+
+- name: Set security.conf
+  copy: src='{{ item }}' dest='{{ apache2_security }}' owner=root group=root mode=0644
+  with_items:
+    - etc/apache2/conf-available/security.conf
+  notify:
+    - Restart Apache2
+
+- name: Set default virtualhost
+  copy: src='etc/apache2/sites-available/000-default.conf' dest='{{ apache2_default_virtualhost }}' owner=root group=root mode=0644
+  notify:
+    - Restart Apache2
+
+- name: Set listen port to 81
+  register: listen_port
+  replace: dest='/etc/apache2/ports.conf' regexp='^(NameVirtualHost|Listen)(\s+[^\d]*)\d+.*$' replace='\1\g<2>81'
+  notify:
+    - Restart Apache2
+
+- name: Remove unneeded files
+  file: path='{{ item }}' state=absent
+  with_items:
+    - '/etc/apache2/sites-available/default-ssl.conf'
+    - '/etc/apache2/sites-available/default-ssl'
+    - '/var/www/html/index.html'
+    - '/var/www/html'
+    - '/var/www/index.html'
+  notify:
+    - Restart Apache2
+
+# Modules
+- name: Enable modules
+  apache2_module: name='{{ item }}' state=present
+  with_items:
+    - rewrite
+    - status
+  notify:
+    - Restart Apache2
+
+- name: Set mods-available/remoteip.conf
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release|int >= 8
+  copy: src='etc/apache2/mods-available/remoteip.conf' dest='/etc/apache2/mods-available/remoteip.conf' owner=root group=root mode=0644
+  notify:
+    - Restart Apache2
+
+- name: Enable remoteip module
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release|int >= 8
+  apache2_module: name=remoteip state=present
+  notify:
+    - Restart Apache2
+
+- name: Set status.conf
+  template:
+    src: etc/apache2/mods-available/status.conf.j2
+    dest: /etc/apache2/mods-available/status.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Restart Apache2
+
+- name: Update environment variables
+  lineinfile:
+    dest: /etc/apache2/envvars
+    line: "APACHE_STATUSURL='http://localhost:81/apache-status'"
+    insertafter: EOF
+
+- name: Force Apache2 restart after change listen port
+  when: listen_port is changed
+  service: name=apache2 state=restarted
+
+- name: Add logrotate config
+  copy: src=etc/logrotate.d/apache2_vhosts dest=/etc/logrotate.d/apache2_vhosts owner=root group=root
+
+# Security
+- name: Set permissions
+  file: path=/etc/apache2 owner=root group=root mode=750

@@ -1,0 +1,17 @@
+---
+
+apache2_domain: '{{ domain | default(inventory_hostname) }}'
+apache2_security: '/etc/apache2/conf-available/security.conf'
+apache2_default_virtualhost: '/etc/apache2/sites-available/000-default.conf'
+
+apache2_deploy_method: host
+
+# Docker
+apache2_docker_version: 8.2.6-apache-bullseye
+
+apache2_docker_subnet: 172.18.1.0/24
+apache2_docker_ip: 172.18.1.14
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

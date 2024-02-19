@@ -1,0 +1,46 @@
+---
+
+# Example:
+# sysctl_values:
+#   - name: 'net.ipv4.tcp_syncookies'
+#     value: 1
+#   - name: 'net.ipv4.conf.all.rp_filter'
+#     value: 1
+#   - name: 'net.ipv4.icmp_echo_ignore_broadcasts'
+#     value: 1
+#   - name: 'net.ipv4.tcp_timestamps'
+#     value: 0
+#   - name: 'net.ipv4.tcp_ecn'
+#     value: 1
+#   - name: 'net.ipv4.ip_default_ttl'
+#     value: 128
+sysctl_values: []
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14
+
+#Отключение ответов на ICMP эхо-запросы (ping):
+#  name: net.ipv4.icmp_echo_ignore_all
+#  value: 1
+#Защита от отражательных атак (IP-подделка):
+#  name: net.ipv4.conf.all.rp_filter
+#  value: 1
+#Ограничение использования TCP-сокетов:
+#  name: net.ipv4.tcp_max_syn_backlog
+#  value: 2048
+#Уменьшение времени ожидания закрытия TCP-соединений:
+#  name: net.ipv4.tcp_fin_timeout
+#  value: 15
+#Защита от атак на отказ в обслуживании (DDoS):
+#  name: net.ipv4.tcp_syncookies
+#  value: 1
+#Увеличение количества максимально возможных открытых файлов:
+#  name: fs.file-max
+#  value: 65536
+#Ограничение количества одновременных открытых соединений:
+#  name: net.ipv4.ip_local_port_range
+#  value: "1024 65000"
+#Управление максимальным количеством PID процессов:
+#  name: kernel.pid_max
+#  value: 65536

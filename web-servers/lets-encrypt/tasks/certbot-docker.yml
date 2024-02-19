@@ -1,0 +1,27 @@
+---
+
+- name: Create directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Create volumes directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}/volumes/var/log/letsencrypt/letsencrypt.log
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+# Setup Docker-compose
+- name: Add docker-compose.yml
+  template:
+    src: 'certbot-docker-compose.yml.j2'
+    dest: '/var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml'
+
+- name: Docker-compose up
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml up -d"

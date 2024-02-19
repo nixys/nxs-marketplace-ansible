@@ -1,0 +1,67 @@
+---
+
+# Create user and group
+- name: Create a acme group
+  group:
+    name: acme
+    state: present
+
+- name: Create a acme user
+  user:
+    name: acme
+    state: present
+    shell: /bin/bash
+    home: /usr/local/scripts/acme
+    group: acme
+
+# Create script dir 
+- name: Create acme configuration directory
+  file:
+    path: /usr/local/scripts/acme
+    state: directory
+
+- name: Download script
+  command: "wget -O /usr/local/scripts/acme/acme.sh https://get.acme.sh -P /usr/local/scripts/acme"
+
+- name: Set file permissions
+  file:
+    path: /usr/local/scripts/acme/acme
+    mode: 0700
+
+- name: Execute the script
+  become_user: acme
+  command: /usr/local/scripts/acme/acme
+
+- name: Change dir from root to acme
+  file:
+    path: /usr/local/scripts/acme
+    owner: acme
+    state: directory
+    recurse: yes
+
+- name: Create acmesh certs store 
+  file:
+    path: /etc/letsencrypt/acme/{{ item }}
+    state: directory
+    owner: acme
+    group: www-data
+    mode: 0750
+  loop: "{{ lets_encrypt_domains }}"
+
+# Add options to config 
+- name: Add lines to file
+  lineinfile:
+    path: /usr/local/scripts/acme/.acme.sh/account.conf
+    line: "{{ item }}"
+    insertafter: EOF
+  with_items:
+    - "SAVED_SL_Key='API_KEY'"
+    - "USER_PATH='/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/local/scripts/acme/bin'"
+
+# Create certificate
+- name: Make config for domain
+  become_user: acme
+  command: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml exec -u acme acmesh sh -c '/usr/local/scripts/acme/acme.sh --issue -d {{ item }} -d '*.{{ item }}' --dns {{ lets_encrypt_dns_function }}'"
+  notify: 
+    - Reload Nginx
+  loop: "{{ lets_encrypt_domains }}"

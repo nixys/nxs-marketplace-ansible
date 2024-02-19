@@ -1,0 +1,34 @@
+---
+
+- name: "Check Ansible version"
+  assert:
+    msg: "Ansible {{ ansible_version.full }} is not supported. You should have at least Ansible {{ ansible_major_version }}.{{ ansible_minor_version }}.*"
+    that:
+      - ansible_version.major >= {{ ansible_major_version }} and ansible_version.minor >= {{ ansible_minor_version }}
+
+- name: Check OS family and version
+  fail: msg='The operating system ({{ ansible_distribution }} {{ ansible_distribution_version }}) is not supported'
+  when: ((ansible_distribution != 'Debian' or (ansible_distribution_major_version|int < 11 or ansible_distribution_major_version|int > 12))) and
+        ((ansible_distribution != 'Ubuntu' or (ansible_distribution_major_version|int < 20 or ansible_distribution_major_version|int > 22)))
+
+# Hostname
+- import_tasks: 10_hostname.yml
+
+# Packages
+- import_tasks: 20_packages-debian.yml
+  when: ansible_distribution == 'Debian'
+
+- import_tasks: 20_packages-ubuntu.yml
+  when: ansible_distribution == 'Ubuntu'
+
+# Locales
+- import_tasks: 30_locales.yml
+
+# Alternatives
+- import_tasks: 40_alternatives.yml
+
+# Datetime
+- import_tasks: 50_datetime.yml
+
+# Environment settings
+- import_tasks: 60_envsettings.yml

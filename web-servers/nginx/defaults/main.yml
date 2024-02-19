@@ -1,0 +1,24 @@
+---
+
+nginx_version: '1.22' # or 1.23
+
+nginx_worker_processes: 'auto'
+nginx_worker_connections: 1024
+
+nginx_ssl_dhparam: no # no (do not add line to config) / yes (autogenerate) / path to file
+nginx_ssl_prefer_server_ciphers: no
+nginx_ssl_protocols: no # or list of protocols (sequence)
+nginx_ssl_ciphers: no # or ciphers string in OpenSSL library format
+
+nginx_site_default_type: default # or error404
+nginx_site_default_ssl: no
+
+nginx_deploy_method: host
+
+# Docker
+nginx_docker_subnet: 172.18.1.0/24
+nginx_docker_ip: 172.18.1.2
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

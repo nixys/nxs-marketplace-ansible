@@ -1,0 +1,26 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:{{ nginx_version }}
+    volumes:
+      - /var/apps/nginx/volumes/conf/auth:/etc/nginx/auth
+      - /var/apps/nginx/volumes/conf/conf.d:/etc/nginx/conf.d
+      - /var/apps/nginx/volumes/conf/nginx.conf:/etc/nginx/nginx.conf
+      - /var/apps/nginx/volumes/conf/sites-available:/etc/nginx/sites-available
+      - /var/apps/nginx/volumes/conf/sites-enabled:/etc/nginx/sites-enabled
+      - /var/apps/nginx/volumes/conf/ssl:/etc/nginx/ssl
+      - /var/apps/nginx/volumes/logs:/var/log/nginx
+    ports:
+      - {{ ansible_ssh_host | default(ansible_host) }}:80:80
+      - {{ ansible_ssh_host | default(ansible_host) }}:443:443
+    networks:
+      vm_net:
+        ipv4_address: {{ nginx_docker_ip }}
+    restart: always
+networks:
+  vm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ nginx_docker_subnet }}

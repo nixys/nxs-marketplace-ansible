@@ -1,0 +1,32 @@
+---
+
+# Install packages
+- name: Install HAProxy
+  apt:
+    pkg: ['haproxy']
+    update_cache: true
+
+# Configuration
+- name: Add haproxy.cfg config
+  template: src=etc/haproxy/haproxy.cfg.j2 dest=/etc/haproxy/haproxy.cfg owner=root group=root
+  notify:
+    - Restart HAProxy
+
+- name: Create dirs for certs
+  file: path=/etc/haproxy/ssl state=directory
+
+- name: Replace rsyslog config
+  replace: dest=/etc/rsyslog.d/49-haproxy.conf regexp='^(.*)/var/log/haproxy\.log(.*)$' replace='\1/var/log/haproxy/haproxy.log\2'
+  notify:
+    - Restart Rsyslog
+    - Restart HAProxy
+
+- name: Replace logrotate config
+  replace: dest=/etc/logrotate.d/haproxy regexp='^(.*)/var/log/haproxy\.log(.*)$' replace='\1/var/log/haproxy/haproxy.log\2'
+
+# Security
+- name: Set permissions for configurations files
+  file: path='{{ item.path }}' owner=root group=root mode='{{ item.mode }}'
+  with_items:
+    - { path: '/etc/haproxy', mode: '0750' }
+    - { path: '/etc/haproxy/ssl', mode: '0700' }

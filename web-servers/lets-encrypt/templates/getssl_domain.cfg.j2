@@ -1,0 +1,13 @@
+CA="https://acme-v01.api.letsencrypt.org" 
+
+DOMAIN_CERT_LOCATION="/etc/letsencrypt/getssl/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}.crt" 
+DOMAIN_KEY_LOCATION="/etc/letsencrypt/getssl/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}.key" 
+DOMAIN_CHAIN_LOCATION="/etc/letsencrypt/getssl/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}/fullchain.pem" 
+#Раскоментировать если требуется промежуточный сертификат отдельно
+#CA_CERT_LOCATION="/etc/letsencrypt/getssl/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}/chain.crt" 
+#Раскоментировать если требуется иметь ключ, сертификат и промежуточный сертификат в одном файле
+#DOMAIN_PEM_LOCATION="/etc/letsencrypt/getssl/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}/{% for domain in lets_encrypt_domains %}{% if domain == target_domain %}{{ target_domain }}{% endif %}{% endfor %}.pem" 
+
+# Каталог для валидации домена
+ACL=('/var/www/getssl/.well-known/acme-challenge')
+USE_SINGLE_ACL="true" 

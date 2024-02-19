@@ -1,0 +1,19 @@
+---
+
+# Check environment
+- name: "Check Ansible version"
+  assert:
+    msg: "Ansible {{ ansible_version.full }} is not supported. You should have at least Ansible {{ ansible_major_version }}.{{ ansible_minor_version }}.*"
+    that:
+      - ansible_version.major >= {{ ansible_major_version }} and ansible_version.minor >= {{ ansible_minor_version }}
+
+- name: Check OS family and version
+  fail: msg='The operating system ({{ ansible_distribution }} {{ ansible_distribution_version }}) is not supported'
+  when: ((ansible_distribution != 'Debian' or (ansible_distribution_major_version|int < 11 or ansible_distribution_major_version|int > 12))) and
+        ((ansible_distribution != 'Ubuntu' or (ansible_distribution_major_version|int < 20 or ansible_distribution_major_version|int > 22)))
+
+# Install packages
+- name: Install Git
+  apt:
+    pkg: ['git']
+    update_cache: true

@@ -1,0 +1,10 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  acmesh:
+    build: ./build/acmesh
+    container_name: acmesh
+    volumes:
+      - /etc/letsencrypt/acme:/etc/letsencrypt/acme
+    tty: true
+    restart: always
+    network_mode: host

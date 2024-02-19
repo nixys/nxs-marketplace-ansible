@@ -1,0 +1,115 @@
+---
+
+# Create user and group
+- name: Create a getssl group
+  group:
+    name: getssl
+    state: present
+
+- name: Create a getssl user
+  user:
+    name: getssl
+    state: present
+    shell: /bin/bash
+    home: /usr/local/scripts/getssl
+    group: getssl
+
+# Create script dir 
+- name: Create getssl configuration directory
+  file:
+    path: /usr/local/scripts/getssl
+    state: directory
+
+- name: Download script
+  command: "wget -O /usr/local/scripts/getssl/getssl https://raw.githubusercontent.com/srvrco/getssl/master/getssl -P /usr/local/scripts/getssl"
+
+- name: Set file permissions
+  file:
+    path: /usr/local/scripts/getssl/getssl
+    mode: 0700
+
+- name: Execute the script
+  command: /usr/local/scripts/getssl/getssl
+
+- name: Change dir from root to getssl
+  file:
+    path: /usr/local/scripts/getssl
+    owner: getssl
+    state: directory
+    recurse: yes
+
+- name: Copy getssl configuration file
+  template:
+    src: getssl.cfg.j2
+    dest: /usr/local/scripts/getssl/.getssl/getssl.cfg
+
+# Create log dir and config for logrotate
+- name: Create log dir
+  file:
+    path: /var/log/getssl
+    owner: getssl
+    state: directory
+
+- name: Create log file
+  file:
+    path: /var/log/getssl/getssl.log
+    state: touch
+    owner: getssl
+    group: getssl
+    mode: '0600'
+
+- name: Copy logrotate config
+  template:
+    src: etc/logrotate.d/getssl.j2
+    dest: /etc/logrotate.d/getssl
+
+# Create domain dir
+- name: Make config for domain
+  become_user: getssl
+  command: /usr/local/scripts/getssl/getssl -c {{ item }}
+  loop: "{{ lets_encrypt_domains }}"
+
+- name: Copy getssl domain configuration file
+  template:
+    src: getssl_domain.cfg.j2
+    dest: /usr/local/scripts/getssl/.getssl/{{ item }}/getssl.cfg
+    owner: getssl
+    group: getssl
+  vars:
+    target_domain: "{{ item }}"
+  loop: "{{ lets_encrypt_domains }}"
+
+- name: Create getssl DNS challenge hook directory
+  file:
+    path: "{{ lets_encrypt_webroot }}"
+    state: directory
+    owner: getssl
+    group: www-data
+    mode: 0750
+
+- name: Create getssl certs store 
+  file:
+    path: /etc/letsencrypt/getssl/{{ item }}
+    state: directory
+    owner: getssl
+    group: www-data
+    mode: 0750
+  loop: "{{ lets_encrypt_domains }}"
+
+# Create SSL certificates
+- name: Create certs
+  become_user: getssl
+  command: /usr/local/scripts/getssl/getssl {{ item }}
+  notify: 
+    - Reload Nginx
+  loop: "{{ lets_encrypt_domains }}"
+
+# Create cron
+- name: Add cron job for getssl renewal (if configured).
+  cron:
+    name: getssl automatic renewal.
+    job: "date >> /var/log/getssl/getssl.log && /usr/local/scripts/getssl/getssl -u -a >> /var/log/getssl/getssl.log 2>&1"
+    minute: "{{ lets_encrypt_cron_minute }}"
+    hour: "{{ lets_encrypt_cron_hour }}"
+    user: "getssl"
+  when: lets_encrypt_auto_renew

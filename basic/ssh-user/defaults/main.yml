@@ -1,0 +1,50 @@
+---
+# Create a group for every user and make that their primary group
+users_create_per_user_group: true
+
+# If we're not creating a per-user group, then this is the group all users
+# belong to
+users_group: users
+
+# The default shell for a user if none is specified
+users_default_shell: /bin/bash
+
+# Create home dirs for new users? Set this to false if you manage home
+# directories in some other way.
+users_create_homedirs: true
+
+# Lists of users to create and delete
+# Example:
+#   users:
+#     - username: test-user
+#       group: users
+#       groups: developers
+#       append: true
+#       shell: /bin/bash
+#       name: Support
+#       uid: 1001
+#       home: /home/test-user
+#       generate_ssh_key: true
+#       update_password: on_create
+users: []
+
+# Example:
+# users_deleted:
+#   - username: test-user
+#     uid: 1001
+#     remove: yes
+#     force: yes
+users_deleted: []
+
+# List of groups to create
+# Example:
+#   groups_to_create:
+#     - name: developers
+#       gid: 10000
+groups_to_create:
+  - name: developers
+    gid: 10000
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

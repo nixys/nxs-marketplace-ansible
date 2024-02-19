@@ -1,0 +1,35 @@
+---
+
+- name: Install the prerequisites
+  apt:
+    pkg: ['curl','gnupg2','ca-certificates','lsb-release','ubuntu-keyring']
+    update_cache: true
+
+- name: Import an official nginx signing key
+  apt_key:
+    url: https://nginx.org/keys/nginx_signing.key
+    keyring: /usr/share/keyrings/nginx-archive-keyring.gpg
+
+- name: Set up the apt repository for stable nginx packages 
+  apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu {{ ansible_distribution_release }} nginx
+    state: present
+    filename: nginx
+    update_cache: yes
+  when: nginx_version == '1.22'
+
+- name: Set up the apt repository for mainline nginx packages 
+  apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/mainline/ubuntu {{ ansible_distribution_release }} nginx
+    state: present
+    filename: nginx
+    update_cache: yes
+  when: nginx_version == '1.23'
+
+- name: Set up repository priority
+  shell: |
+    touch /etc/apt/preferences.d/99nginx
+    echo "Package: *" >> /etc/apt/preferences.d/99nginx
+    echo "Pin: origin nginx.org" >> /etc/apt/preferences.d/99nginx
+    echo "Pin: release o=nginx" >> /etc/apt/preferences.d/99nginx
+    echo "Pin-Priority: 900" >> /etc/apt/preferences.d/99nginx

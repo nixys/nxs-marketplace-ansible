@@ -1,0 +1,141 @@
+---
+
+# Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: yes
+
+# Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+# Docker role
+- ansible.builtin.include_role:
+    name: container_engines/docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Check docker version
+- name: Get docker version
+  shell: "docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}'" 
+  register: docker_version
+  changed_when: false
+
+- debug: var=version.stdout
+
+- name: Set docker-compsoe version 3.8 for docker hier than 19.03.0
+  when: docker_version.stdout > "19.03.0"
+  set_fact:
+    docker_compose_file_version: '3.8'
+  changed_when: false
+
+- name: Set docker-compsoe version 2.4 for docker lower than 19.03.0
+  when: docker_version.stdout < "19.03.0"
+  set_fact:
+    docker_compose_file_version: '2.2'
+  changed_when: false
+
+# Check docker-compose installation
+- name: Check is docker-compose installed
+  shell: command -v docker-compose >/dev/null 2>&1
+  register: is_docker_compose_install
+  ignore_errors: yes
+
+- debug: msg="{{ is_docker_compose_install.rc }}" # it returns rc 1
+
+- debug: var=is_docker_compose_install
+
+- name: Choose docker-compose command aka "docker-compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc == 0
+  set_fact:
+    docker_command: "docker-compose"
+
+- name: Choose docker-compose command aka "docker compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc != 0
+  set_fact:
+    docker_command: "docker compose"
+
+# Create directories
+- name: Create nginx directory
+  file:
+    path: /var/apps/nginx/volumes/conf
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Create a sites directory
+  ansible.builtin.file:
+    path: /var/apps/nginx/volumes/conf/sites-enabled
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Create a sites directory
+  ansible.builtin.file:
+    path: /var/apps/nginx/volumes/conf/sites-available
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Create a conf.d directory
+  ansible.builtin.file:
+    path: /var/apps/nginx/volumes/conf/conf.d
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Add default configs
+  template: src='etc/nginx/{{ item }}.j2' dest='/var/apps/nginx/volumes/conf/{{ item }}' owner=root group=root
+  with_items:
+    - sites-available/default
+    - conf.d/ssl.conf
+    - nginx.conf
+
+- name: Add default configs
+  template: src='etc/nginx/{{ item }}.j2' dest='/var/apps/nginx/volumes/conf/sites-enabled/default' owner=root group=root
+  with_items:
+    - sites-available/default
+
+- name: Create dirs for certs and auth files
+  file: path='{{ item }}' state=directory owner=root group=root
+  with_items:
+    - /var/apps/nginx/volumes/conf/ssl
+    - /var/apps/nginx/volumes/conf/auth
+
+- name: Create a logs directory
+  ansible.builtin.file:
+    path: /var/apps/nginx/volumes/logs
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Generate a file with DH parameters for DHE ciphers
+  when: nginx_ssl_dhparam and not nginx_ssl_dhparam is string
+  command: '/usr/bin/openssl dhparam -out /var/apps/nginx/volumes/conf/ssl/dhparam.pem 4096'
+  args:
+    creates: /var/apps/nginx/volumes/conf/ssl/dhparam.pem
+
+- name: Generate self-signed certificate and key for default site
+  when: nginx_site_default_ssl
+  command: '/usr/bin/openssl req -x509 -nodes -days 3650 -newkey rsa:4096 -keyout /var/apps/nginx/volumes/conf/ssl/default.key -out /var/apps/nginx/volumes/conf/ssl/default.crt -subj "/CN={{ inventory_hostname }}"'
+  args:
+    creates: /var/apps/nginx/volumes/conf/ssl/default.crt
+
+# Setup Docker-compose
+- name: Add docker-compose.yml
+  template:
+    src: 'docker-compose.yml.j2'
+    dest: '/var/apps/nginx/docker-compose.yml'
+
+- name: Docker-compose up
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/nginx/docker-compose.yml up -d"

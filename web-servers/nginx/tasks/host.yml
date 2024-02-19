@@ -1,0 +1,82 @@
+---
+
+# Include
+- when: ansible_distribution == 'Debian'
+  import_tasks: nginx-debian.yml
+
+- when: ansible_distribution == 'Ubuntu'
+  import_tasks: nginx-ubuntu.yml
+
+- name: Install nginx
+  apt:
+    pkg: ['nginx']
+    update_cache: yes
+  notify:
+    - Start Nginx
+
+- name: Create a sites directory
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled
+    state: directory
+    mode: '0700'
+
+- name: Create a sites directory
+  ansible.builtin.file:
+    path: /etc/nginx/sites-available
+    state: directory
+    mode: '0700'
+
+- name: Add default configs
+  template: src='etc/nginx/{{ item }}.j2' dest='/etc/nginx/{{ item }}' owner=root group=root
+  with_items:
+    - sites-available/default
+    - conf.d/ssl.conf
+    - nginx.conf
+  notify:
+    - Restart Nginx
+
+- name: Create dirs for certs and auth files
+  file: path='{{ item }}' state=directory
+  with_items:
+    - /etc/nginx/ssl
+    - /etc/nginx/auth
+
+- name: Generate a file with DH parameters for DHE ciphers
+  when: nginx_ssl_dhparam and not nginx_ssl_dhparam is string
+  command: '/usr/bin/openssl dhparam -out /etc/nginx/ssl/dhparam.pem 4096'
+  args:
+    creates: /etc/nginx/ssl/dhparam.pem
+  notify:
+    - Restart Nginx
+
+- name: Generate self-signed certificate and key for default site
+  when: nginx_site_default_ssl
+  command: '/usr/bin/openssl req -x509 -nodes -days 3650 -newkey rsa:4096 -keyout /etc/nginx/ssl/default.key -out /etc/nginx/ssl/default.crt -subj "/CN={{ inventory_hostname }}"'
+  args:
+    creates: /etc/nginx/ssl/default.crt
+  notify:
+    - Restart Nginx
+
+- name: Remove unnecessary files/dirs
+  file: path='{{ item }}' state=absent
+  with_items:
+    - /var/www/html/index.nginx-debian.html
+    - /var/www/html
+
+- name: Add logrotate config
+  copy: src=etc/logrotate.d/nginx_vhosts dest=/etc/logrotate.d/nginx_vhosts owner=root group=root
+
+# Security
+- name: Set owner of configuration directory
+  file: dest=/etc/nginx state=directory owner=root group=www-data
+
+- name: Set permissions for configurations files
+  file: path='{{ item.path }}' mode='{{ item.mode }}' recurse='{{ item.recurse | default("no") }}'
+  with_items:
+    - { path: '/etc/nginx', mode: 'go=', recurse: yes }
+    - { path: '/etc/nginx', mode: '0710' }
+    - { path: '/etc/nginx/auth', mode: '0711' }
+
+- name: Set permissions for a file with DH parameters
+  when: "'/etc/nginx/ssl/dhparam.pem' is exists"
+  file: path='/etc/nginx/ssl/dhparam.pem' mode=0600

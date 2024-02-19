@@ -1,0 +1,70 @@
+---
+
+# Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: yes
+
+# Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+# Docker role
+- ansible.builtin.include_role:
+    name: container_engines/docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Check docker version
+- name: Get docker version
+  shell: "docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}'" 
+  register: docker_version
+  changed_when: false
+
+- debug: var=version.stdout
+
+- name: Set docker-compsoe version 3.8 for docker hier than 19.03.0
+  when: docker_version.stdout > "19.03.0"
+  set_fact:
+    docker_compose_file_version: '3.8'
+  changed_when: false
+
+- name: Set docker-compsoe version 2.4 for docker lower than 19.03.0
+  when: docker_version.stdout < "19.03.0"
+  set_fact:
+    docker_compose_file_version: '2.2'
+  changed_when: false
+
+# Check docker-compose installation
+- name: Check is docker-compose installed
+  shell: command -v docker-compose >/dev/null 2>&1
+  register: is_docker_compose_install
+  ignore_errors: yes
+
+- debug: msg="{{ is_docker_compose_install.rc }}" # it returns rc 1
+
+- debug: var=is_docker_compose_install
+
+- name: Choose docker-compose command aka "docker-compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc == 0
+  set_fact:
+    docker_command: "docker-compose"
+
+- name: Choose docker-compose command aka "docker compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc != 0
+  set_fact:
+    docker_command: "docker compose"
+
+# Include tasks for mysql/mariadb/percona.
+- include_tasks: certbot-docker.yml
+  when: lets_encrypt_acme_client == 'certbot'
+
+- include_tasks: getssl-docker.yml
+  when: lets_encrypt_acme_client == 'getssl'
+
+- include_tasks: acmesh-docker.yml
+  when: lets_encrypt_acme_client == 'acmesh'

@@ -1,0 +1,21 @@
+---
+
+- name: Set hostname
+  hostname:
+    name: '{{ inventory_hostname }}'
+
+- name: Set /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ inventory_hostname }}$'
+    line: "{{ ansible_default_ipv4.address }}\t{{ inventory_hostname }}"
+    state: present
+    insertbefore: BOF
+
+- name: Set /etc/mailname
+  copy:
+    content: "{{ domain }}\n"
+    dest: /etc/mailname
+    owner: root
+    group: root
+    mode: 0644

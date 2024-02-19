@@ -1,0 +1,28 @@
+---
+
+# Upgrade packages
+- name: Upgrade packages (Debian)
+  when: dist_upgrade == true
+  apt:
+    upgrade: dist
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# Install packages
+- name: Install common packages (Debian)
+  apt:
+    pkg: ['mc','gpg','iotop','htop','telnet','tcpdump','nmap','curl','locales-all','hexedit','sudo','zip','unzip',
+          'patch','pwgen','vim','less','parted','subversion','ntp','bzip2','lsof','strace','mutt','ncdu',
+          'smartmontools','net-tools','nano','pigz','wget','tree','rsyslog','dnsutils','logrotate',
+          'apt-transport-https','gnupg2','gnupg','ca-certificates','software-properties-common','dbus','console-setup','console-data','lvm2','cron']
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install NTP (Debian)
+  apt:
+    pkg: ['systemd-timesyncd']
+    state: present
+    update_cache: true

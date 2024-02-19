@@ -1,0 +1,163 @@
+---
+
+- name: Install opendkim-tools
+  apt:
+    pkg: ['opendkim-tools']
+    update_cache: true
+
+# Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: yes
+
+# Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+# Docker role
+- ansible.builtin.include_role:
+    name: container_engines/docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Check docker version
+- name: Get docker version
+  shell: "docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}'" 
+  register: docker_version
+  changed_when: false
+
+- debug: var=docker_version.stdout
+
+- name: Set docker-compose version 3.8 for docker higher than 19.03.0
+  when: docker_version.stdout > "19.03.0"
+  set_fact:
+    docker_compose_file_version: '3.8'
+  changed_when: false
+
+- name: Set docker-compose version 2.4 for docker lower than 19.03.0
+  when: docker_version.stdout < "19.03.0"
+  set_fact:
+    docker_compose_file_version: '2.2'
+  changed_when: false
+
+# Check docker-compose installation
+- name: Check is docker-compose installed
+  shell: command -v docker-compose >/dev/null 2>&1
+  register: is_docker_compose_install
+  ignore_errors: yes
+
+- debug: msg="{{ is_docker_compose_install.rc }}" # it returns rc 1
+
+- debug: var=is_docker_compose_install
+
+- name: Set docker-compose command as "docker-compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc == 0
+  set_fact:
+    docker_command: "docker-compose"
+
+- name: Set docker-compose command as "docker compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc != 0
+  set_fact:
+    docker_command: "docker compose"
+
+# Create directories
+- name: Create exim4_smarthost directory
+  file:
+    path: /var/apps/exim4_smarthost/volumes/conf
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Set default configs
+  copy:
+    src: etc/exim4
+    dest: /var/apps/exim4_smarthost/volumes/conf/
+    owner: root
+    group: 115
+    mode: 0644
+    directory_mode: 755
+
+- name: Set primary hostname, qualify domain, dkim selector, mail for root and client mail
+  replace:
+    dest: /var/apps/exim4_smarthost/volumes/conf/exim4/exim4.conf.template
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.line }}'
+  with_items:
+    - { regexp: '^(primary_hostname[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_primary_hostname }}' }
+    - { regexp: '^(qualify_domain[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_qualify_domain }}' }
+    - { regexp: '(dkim_selector[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_dkim_selector }}' }
+    - { regexp: '^(mail_for_root:\n[^\n]*\n[\s]*domains[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_qualify_domain }}' }
+    - { regexp: 'client-tech\@nixys\.io$', line: ' {{ exim4_smarthost_admin_mail }}' }
+
+- name: Set network settings
+  replace:
+    dest: /var/apps/exim4_smarthost/volumes/conf/exim4/update-exim4.conf.conf
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.line }}'
+  with_items:
+    - { regexp: '^(dc_local_interfaces[\s]*=[\s]*).*$', line: "\\1'{{ exim4_smarthost_local_interfaces }}'" }
+    - { regexp: '^(dc_relay_nets[\s]*=[\s]*).*$', line: "\\1'{{ exim4_smarthost_relay_nets }}'" }
+
+- name: Disable blocking private networks
+  when: not exim4_smarthost_block_private_networks
+  replace:
+    dest: /var/apps/exim4_smarthost/volumes/conf/exim4/exim4.conf.template
+    regexp: '^([\s]*ignore_target_hosts) = [\d\.\s:\\\/\n]*$'
+    replace: '\1 = 0.0.0.0 : 127.0.0.0/8 : 255.255.255.255'
+
+# SPF & DKIM
+- name: Generate a SPF record
+  template:
+    src: spf.j2
+    dest: /var/apps/exim4_smarthost/spf_{{exim4_smarthost_dkim_domain }}.txt
+
+- name: Create dkim directory 
+  file:
+    dest: /var/apps/exim4_smarthost/volumes/conf/exim4/dkim
+    state: directory
+    owner: root
+    group: 115
+    mode: 750
+
+- name: Generate DKIM key for one domain
+  command: opendkim-genkey -D /var/apps/exim4_smarthost/volumes/conf/exim4/dkim/ -d "{{ exim4_smarthost_dkim_domain }}" -s "{{ exim4_smarthost_dkim_selector }}" -a
+
+- name: Copy key-file
+  copy:
+    remote_src: True
+    src: '/var/apps/exim4_smarthost/volumes/conf/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.private'
+    dest: '/var/apps/exim4_smarthost/volumes/conf/exim4/dkim/{{ exim4_smarthost_dkim_domain }}.key'
+    mode: 0640
+    owner: root
+    group: 115
+
+- name: Remove old key-file
+  file:
+    path: /var/apps/exim4_smarthost/volumes/conf/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.private
+    state: absent
+
+- name: Copy the public key to root directory for later view
+  copy:
+    remote_src: True
+    src: '/var/apps/exim4_smarthost/volumes/conf/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.txt'
+    dest: '/var/apps/exim4_smarthost/dkim_{{ exim4_smarthost_dkim_domain }}.txt'
+
+- name: Remove old public key
+  file:
+    path: /var/apps/exim4_smarthost/volumes/conf/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.txt
+    state: absent
+
+# Setup Docker-compose
+- name: Add docker-compose.yml
+  template:
+    src: 'docker-compose.yml.j2'
+    dest: '/var/apps/exim4_smarthost/docker-compose.yml'
+
+- name: Docker-compose up
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/exim4_smarthost/docker-compose.yml up -d"

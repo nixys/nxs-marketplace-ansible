@@ -1,0 +1,55 @@
+{% if nginx_deploy_method == 'host' %}
+user www-data;
+
+worker_priority -15;
+{% else %}
+user nginx;
+{% endif %}
+
+worker_processes {{ nginx_worker_processes }};
+include /etc/nginx/modules-enabled/*.conf;
+
+error_log  /var/log/nginx/error.log;
+pid        /var/run/nginx.pid;
+
+events {
+	worker_connections  {{ nginx_worker_connections }};
+}
+
+http {
+	include       /etc/nginx/mime.types;
+	default_type  application/octet-stream;
+
+	log_format nixys '$remote_addr\t"$host"\t[$time_local]\t$status\t"$request"\t$request_time ($upstream_response_time)\t$bytes_sent\t"$http_referer"\t"$http_user_agent"';
+	log_format nixys-debug '$remote_addr\t"$host"\t[$time_local]\t$status\t"$request"\t"req_time: $request_time"\t"bytes_sent: $bytes_sent"\n'
+	                        '\t\t\t\t\t\t\t\t"req_file: $request_filename"\t"$http_user_agent"\t"$http_referer"\n'
+	                        '\t\t\t\t\t\t\t\t"Request completed: $request_completion"\n'
+	                        '\t\t\t\t\t\t\t\t"Body request: $request_body"\n';
+
+	access_log  /var/log/nginx/access.log nixys;
+
+	sendfile    on;
+	tcp_nodelay on;
+
+	gzip on;
+	gzip_proxied any;
+	gzip_comp_level 4;
+	gzip_vary on;
+	gzip_types text/css text/plain application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript application/javascript;
+
+	server_tokens off;
+
+	server_names_hash_bucket_size 33;
+	reset_timedout_connection on;
+
+	client_header_timeout 15;
+	client_body_timeout   15;
+	send_timeout           5;
+	keepalive_timeout  30 15;
+
+	#limit_req_zone   $binary_remote_addr  zone=qglob:16m  rate=1r/s;
+	#limit_conn_zone  $binary_remote_addr  zone=cglob:16m;
+
+	include /etc/nginx/conf.d/*.conf;
+	include /etc/nginx/sites-enabled/*;
+}

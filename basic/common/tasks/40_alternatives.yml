@@ -1,0 +1,16 @@
+---
+
+- name: Set alternatives (editor)
+  alternatives:
+    link={{ item.link }}
+    name={{ item.name }}
+    path={{ item.path }}
+  with_items:
+    - { link: '/usr/bin/editor', name: 'editor', path: '/usr/bin/mcedit' }
+
+- name: Set mcedit as default in mc for root
+  lineinfile:
+    dest: /root/.selected_editor
+    regexp: '^[#\s]*SELECTED_EDITOR='
+    line: 'SELECTED_EDITOR="/usr/bin/mcedit"'
+    create: yes

@@ -1,0 +1,9 @@
+---
+
+- name: Set default /etc/profile.d/bash_history.sh
+  copy:
+    src: etc/profile.d/bash_history.sh
+    dest: /etc/profile.d/bash_history.sh
+    owner: root
+    group: root
+    mode: 0700

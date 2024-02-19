@@ -1,0 +1,27 @@
+---
+
+# Install packages
+- name: Install Docker Repository key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+
+- name: Add Docker Repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+    state: present
+    update_cache: yes
+    filename: docker
+
+- name: Install docker-ce package
+  apt:
+    name:  "{{ item }}"
+    state: present
+    allow_downgrade: true
+  with_items:
+    - docker-ce={{ docker_package_epoch }}:{{ docker_version | default([]) }}*
+    - docker-ce-cli={{ docker_package_epoch }}:{{ docker_version | default([]) }}*
+    - docker-ce-rootless-extras={{ docker_package_epoch }}:{{ docker_version | default([]) }}*
+    - containerd.io
+    - docker-compose-plugin
+  notify:
+  - Restart docker

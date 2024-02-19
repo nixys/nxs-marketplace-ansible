@@ -1,0 +1,8 @@
+---
+
+- name: Set default locale
+  shell: localectl set-locale 'LANG={{ locale_default }}'
+
+- name: Set keymap
+  shell: localectl set-keymap '{{ locale_keymap }}'
+  when: (ansible_distribution_major_version|int != 12) and (ansible_distribution_major_version|int != 22)

@@ -1,0 +1,11 @@
+---
+
+- name: Set timezone
+  timezone:
+    name: '{{ timezone }}'
+  notify:
+    - Restart rsyslog
+    - Restart cron
+
+- name: Enable timesync
+  command: timedatectl set-ntp true

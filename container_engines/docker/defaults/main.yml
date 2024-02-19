@@ -1,0 +1,9 @@
+---
+
+docker_version: '23.0'
+docker_package_epoch: 5
+docker_iptables: true
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

@@ -1,0 +1,90 @@
+---
+
+# Create user and group
+- name: Create a acme group
+  group:
+    name: acme
+    state: present
+
+- name: Create a acme user
+  user:
+    name: acme
+    state: present
+    shell: /bin/bash
+    home: /usr/local/scripts/acme
+    group: acme
+
+# Get User and Group ID
+- name: Get acme UID
+  command: id -u acme
+  register: user_id_output
+
+- name: Display the User ID value
+  debug:
+    var: user_id_output.stdout
+
+- name: Get acme GID
+  command: id -g acme
+  register: group_id_output
+
+- name: Display the Group ID value
+  debug:
+    var: group_id_output.stdout
+
+# Create Certificate store
+- name: Create acmesh certs store 
+  file:
+    path: /etc/letsencrypt/acme/{{ item }}
+    state: directory
+    owner: acme
+    group: www-data
+    mode: 0750
+  loop: "{{ lets_encrypt_domains }}"
+
+# Create dir for docker-compose
+- name: Create directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Create Dockerfile directory
+  file:
+    path: /var/apps/{{ lets_encrypt_acme_client }}/build/acmesh/
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+# Add Dockerfile
+- name: Add Dockerfile
+  template:
+    src: 'acmesh-dockerfile.j2'
+    dest: '/var/apps/{{ lets_encrypt_acme_client }}/build/acmesh/Dockerfile'
+  vars:
+    docker_user_id: "{{ user_id_output.stdout }}"
+    docker_group_id: "{{ group_id_output.stdout }}"
+
+# Setup Docker-compose
+- name: Add docker-compose.yml
+  template:
+    src: 'acmesh-docker-compose.yml.j2'
+    dest: '/var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml'
+
+- name: Docker-compose build
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml build"
+
+- name: Docker-compose up
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/{{ lets_encrypt_acme_client }}/docker-compose.yml up -d"
+
+# Create certificate
+- name: Make config for domain
+  become_user: acme
+  command: /usr/local/scripts/acme/acme.sh --issue -d {{ item }} -d '*.{{ item }}' --dns {{ lets_encrypt_dns_function }}
+  notify: 
+    - Reload Nginx
+  loop: "{{ lets_encrypt_domains }}"

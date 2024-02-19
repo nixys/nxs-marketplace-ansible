@@ -1,0 +1,10 @@
+{% if nginx_ssl_dhparam %}
+ssl_dhparam {% if nginx_ssl_dhparam is string %}{{ nginx_ssl_dhparam }}{% else %}/etc/nginx/ssl/dhparam.pem{% endif %};
+{% endif %}
+ssl_prefer_server_ciphers {{ nginx_ssl_prefer_server_ciphers | ternary('on', 'off') }};
+{% if nginx_ssl_protocols is sequence %}
+ssl_protocols {{ nginx_ssl_protocols | join(' ') }};
+{% endif %}
+{% if nginx_ssl_ciphers is string %}
+ssl_ciphers {{ nginx_ssl_ciphers }};
+{% endif %}

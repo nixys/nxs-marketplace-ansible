@@ -1,0 +1,28 @@
+---
+
+exim4_smarthost_primary_hostname: '{{ domain | default(inventory_hostname) }}'
+exim4_smarthost_qualify_domain: '{{ domain | default(inventory_hostname) }}'
+exim4_smarthost_admin_mail: '{{ admin_mail | default("client-tech@nixys.io") }}'
+
+exim4_smarthost_local_interfaces: '127.0.0.1 : {{ ansible_default_ipv4.address }}'
+exim4_smarthost_relay_nets: '127.0.0.1 : {{ ansible_default_ipv4.address }}'
+exim4_smarthost_block_private_networks: yes
+
+exim4_smarthost_smtp_port: 2525
+exim4_smarthost_smtps_port: 4654
+exim4_smarthost_smtp_submission_port: 5875
+
+exim4_smarthost_dkim_selector: 'mail'
+exim4_smarthost_dkim_domain: '{{ domain | default(inventory_hostname) }}'
+
+exim4_smarthost_deploy_method: host
+
+# Docker
+exim4_smarthost_docker_version: latest
+exim4_smarthost_docker_subnet: 172.18.1.0/24
+exim4_smarthost_docker_ip: 172.18.1.14
+exim4_smarthost_docker_listen_interface: 127.0.0.1
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

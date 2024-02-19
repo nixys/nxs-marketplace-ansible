@@ -1,0 +1,29 @@
+---
+
+#haproxy_listen:
+#  - name: 'test'
+#    bind:
+#      - ':80'
+#    mode: 'http'
+#    option:
+#      - 'httpchk'
+#    servers:
+#      - name: 'test2'
+#        ip: '127.0.0.1'
+#        port: '80'
+#        options: 'check'
+#    http_request: 'redirect scheme https unless { ssl_fc }'
+
+haproxy_listen: []
+
+haproxy_deploy_method: host
+
+# Docker
+haproxy_docker_version: 2.9.4
+
+haproxy_docker_subnet: 172.18.1.0/24
+haproxy_docker_ip: 172.18.1.9
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

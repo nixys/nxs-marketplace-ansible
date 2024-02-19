@@ -1,0 +1,112 @@
+---
+
+# Check environment
+- name: "Check Ansible version"
+  assert:
+    msg: "Ansible {{ ansible_version.full }} is not supported. You should have at least Ansible {{ ansible_major_version }}.{{ ansible_minor_version }}.*"
+    that:
+      - ansible_version.major >= {{ ansible_major_version }} and ansible_version.minor >= {{ ansible_minor_version }}
+
+- name: Check OS family and version
+  fail: msg='The operating system ({{ ansible_distribution }} {{ ansible_distribution_version }}) is not supported'
+  when: ((ansible_distribution != 'Debian' or (ansible_distribution_major_version|int < 11 or ansible_distribution_major_version|int > 12))) and
+        ((ansible_distribution != 'Ubuntu' or (ansible_distribution_major_version|int < 20 or ansible_distribution_major_version|int > 22)))
+
+# Main configuration
+- name: Creating groups
+  group: name="{{item.name}}" gid="{{item.gid | default(omit)}}"
+  with_items: "{{groups_to_create}}"
+  tags: ['users','groups','configuration']
+
+- name: Per-user group creation
+  group: name="{{item.username}}"
+         gid="{{item.gid | default(item.uid) | default(omit)}}"
+  with_items: "{{users}}"
+  when: "'group' not in item and users_create_per_user_group"
+  tags: ['users','configuration']
+
+- name: User creation
+  user:
+    name: "{{item.username}}"
+    group: "{{item.group | default(item.username if users_create_per_user_group else users_group)}}"
+    # empty string removes user from all secondary groups
+    groups: "{{item.groups | join(',') if 'groups' in item else ''}}"
+    append: "{{item.append | default(omit)}}"
+    shell: "{{item.shell if item.shell is defined else users_default_shell}}"
+    password: "{{item.password if item.password is defined else '!'}}"
+    comment: "{{item.name if item.name is defined else ''}}"
+    uid: "{{item.uid | default(omit)}}"
+    home: "{{ item.home | default('/home/' + item.username) }}"
+    createhome: "{{'yes' if users_create_homedirs else 'no'}}"
+    generate_ssh_key: "{{ item.generate_ssh_key | default(omit) }}"
+    update_password: "{{item.update_password | default(omit)}}"
+  with_items: "{{users}}"
+  tags: ['users','configuration']
+
+- name: Add sudo rights
+  template:
+    src: sudo_template
+    dest: "/etc/sudoers.d/{{ item.username | replace('.','-') }}"
+    owner: root
+    group: root
+    force: yes
+    mode: 0644
+  with_items: "{{users}}"
+  when: item.need_sudo | default(false) == true
+  tags: ['users','configuration']
+
+- name: SSH keys
+  authorized_key:
+    user: "{{item.0.username}}"
+    key: "{{item.1}}"
+    path: "{{ item.0.home | default('/home/' + item.0.username) }}/.ssh/authorized_keys"
+  with_subelements:
+    - "{{users}}"
+    - ssh_key
+    - skip_missing: yes
+  tags: ['users','configuration']
+
+- name: Setup user profiles
+  blockinfile:
+    block: "{{item.profile}}"
+    dest: "{{ item.home | default('/home/' + item.username) }}/.profile"
+    owner: "{{item.username}}"
+    group: "{{item.group | default(item.username if users_create_per_user_group else users_group)}}"
+    mode: 0644
+    create: true
+  when: users_create_homedirs and item.profile is defined
+  with_items: "{{users}}"
+
+- name: Deleted user removal
+  user:
+    name: "{{item.username}}"
+    state: absent
+    remove: "{{item.remove | default(omit)}}"
+    force: "{{item.force | default(omit)}}"
+  with_items: "{{users_deleted}}"
+  tags: ['users','configuration']
+
+- name: Deleted per-user group removal
+  group: name="{{item.username}}" state=absent
+  with_items: "{{users_deleted}}"
+  when: users_create_per_user_group
+  tags: ['users','configuration']
+
+# SSH configuration
+- name: Check AllowUsers
+  register: ssh_config_checked
+  shell: 'grep AllowUsers /etc/ssh/sshd_config | grep {{ item.username }}'
+  changed_when: no
+  failed_when: no
+  with_items: "{{users}}"
+
+- name: Add user to AllowUsers
+  when: item.rc != 0
+  replace:
+    dest: /etc/ssh/sshd_config
+    regexp: '^(AllowUsers.*)$'
+    replace: '\1 {{ item.item.username }}'
+    validate: '/usr/sbin/sshd -T -f %s'
+  with_items: "{{ ssh_config_checked.results }}"
+  notify:
+    - Restart SSH

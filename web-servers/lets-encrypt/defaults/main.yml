@@ -1,0 +1,28 @@
+---
+
+lets_encrypt_acme_client: certbot # certbot, acmesh, getssl
+lets_encrypt_deploy_method: host
+
+
+lets_encrypt_dry_run: true
+lets_encrypt_webroot: /var/www/getssl
+lets_encrypt_email: example@nixys.io
+lets_encrypt_domains:
+  - example.com
+  - www.example.com
+lets_encrypt_auto_renew: true
+lets_encrypt_cron_hour: "3"
+lets_encrypt_cron_minute: "30"
+
+# Certbot auto-renew cron job configuration (for certificate renewals).
+lets_encrypt_certbot_auto_renew_user: "{{ lets_encrypt_domains | first }}"
+lets_encrypt_certbot_auto_renew_options: "--quiet"
+
+lets_encrypt_dns_function: dns_hetzner # Only for acme.sh. Full list - https://github.com/Neilpang/acme.sh/tree/master/dnsapi
+
+# Docker
+lets_encrypt_docker_version: 2.8.0
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

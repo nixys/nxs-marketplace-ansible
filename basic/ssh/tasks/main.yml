@@ -1,0 +1,115 @@
+---
+
+# Check environment
+- name: "Check Ansible version"
+  assert:
+    msg: "Ansible {{ ansible_version.full }} is not supported. You should have at least Ansible {{ ansible_major_version }}.{{ ansible_minor_version }}.*"
+    that:
+      - ansible_version.major >= {{ ansible_major_version }} and ansible_version.minor >= {{ ansible_minor_version }}
+
+- name: Check OS family and version
+  fail: msg='The operating system ({{ ansible_distribution }} {{ ansible_distribution_version }}) is not supported'
+  when: ((ansible_distribution != 'Debian' or (ansible_distribution_major_version|int < 11 or ansible_distribution_major_version|int > 12))) and
+        ((ansible_distribution != 'Ubuntu' or (ansible_distribution_major_version|int < 20 or ansible_distribution_major_version|int > 22)))
+
+- name: "Check allow_users list"
+  assert:
+    msg: "allow_users list must be set!"
+    that: allow_users | length > 0
+  when: not ssh_permit_root_login
+
+# Install packages
+- name: Install SSH package
+  apt: pkg=ssh update_cache=true
+  notify:
+    - Start SSH
+
+# Configuration
+- name: Set PermitRootLogin directive
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^[#]*PermitRootLogin'
+    line: "PermitRootLogin {{ ssh_permit_root_login | ternary('yes', 'no') }}"
+  notify:
+    - Restart SSH
+
+- name: Check AllowUsers exists
+  register: allow_users_exists
+  shell: 'grep -P "^AllowUsers" /etc/ssh/sshd_config'
+  changed_when: no
+  failed_when: no
+
+- name: Add AllowUsers directive
+  when: allow_users_exists.rc != 0
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^AllowUsers'
+    line: 'AllowUsers root {{ allow_users | join(" ") }}'
+    validate: '/usr/sbin/sshd -T -f %s'
+  notify:
+    - Restart SSH
+
+- name: Add empty line before AllowUsers directive
+  replace:
+    dest: /etc/ssh/sshd_config
+    regexp: '^[\n]*(AllowUsers.*)$'
+    replace: '\n\1'
+    validate: '/usr/sbin/sshd -T -f %s'
+
+- name: Check root is present in AllowUsers
+  register: ssh_allow_users_root
+  shell: 'grep -P "^AllowUsers.*\sroot(\s|$)" /etc/ssh/sshd_config'
+  changed_when: no
+  failed_when: no
+
+- name: Check allow_users is present in AllowUsers
+  register: ssh_allow_users
+  shell: 'grep -P "^AllowUsers.* {{ allow_users | join(" ") }}" /etc/ssh/sshd_config'
+  changed_when: no
+  failed_when: no
+
+- name: Add root to AllowUsers
+  when:
+    - ssh_allow_users_root.rc != 0
+    - ssh_permit_root_login
+  replace:
+    dest: /etc/ssh/sshd_config
+    regexp: '^AllowUsers(.*)$'
+    replace: 'AllowUsers root\1'
+    validate: '/usr/sbin/sshd -T -f %s'
+  notify:
+    - Restart SSH
+
+- name: Add allow_users to AllowUsers
+  when:
+    - ssh_allow_users.rc != 0
+  replace:
+    dest: /etc/ssh/sshd_config
+    regexp: '^AllowUsers(.*)$'
+    replace: 'AllowUsers {{ allow_users | join(" ") }}\1'
+    validate: '/usr/sbin/sshd -T -f %s'
+  notify:
+    - Restart SSH
+
+- name: Remove root from AllowUsers
+  when:
+    - ssh_allow_users_root.rc == 0
+    - not ssh_permit_root_login
+  replace:
+    dest: /etc/ssh/sshd_config
+    regexp: '^AllowUsers(.*)(\sroot)((\s|$).*)$'
+    replace: "AllowUsers\\1\\3"
+    validate: '/usr/sbin/sshd -T -f %s'
+  notify:
+    - Restart SSH
+
+- name: Disable root access for sudo group members
+  replace:
+    dest: /etc/sudoers
+    regexp: '^[#]*(%sudo\s.*)$'
+    replace: '#\1'
+    validate: 'visudo -cf %s'
+
+# Security
+- name: Set permissions
+  file: path=/etc/ssh owner=root group=root mode=750

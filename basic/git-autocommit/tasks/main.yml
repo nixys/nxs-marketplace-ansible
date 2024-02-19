@@ -1,0 +1,98 @@
+---
+
+# Check environment
+- name: "Check Ansible version"
+  assert:
+    msg: "Ansible {{ ansible_version.full }} is not supported. You should have at least Ansible {{ ansible_major_version }}.{{ ansible_minor_version }}.*"
+    that:
+      - ansible_version.major >= {{ ansible_major_version }} and ansible_version.minor >= {{ ansible_minor_version }}
+
+- name: Check OS family and version
+  fail: msg='The operating system ({{ ansible_distribution }} {{ ansible_distribution_version }}) is not supported'
+  when: ((ansible_distribution != 'Debian' or (ansible_distribution_major_version|int < 11 or ansible_distribution_major_version|int > 12))) and
+        ((ansible_distribution != 'Ubuntu' or (ansible_distribution_major_version|int < 20 or ansible_distribution_major_version|int > 22)))
+
+- stat: path=/.git
+  register: g
+
+- name: Check /.git
+  fail: msg='/.git dir exists'
+  when: g.stat.isdir is defined and g.stat.isdir
+
+- stat: path=/root/.git
+  register: rg
+
+- name: Check /root/.git
+  fail: msg='/root/.git already exists'
+  when: rg.stat.exists
+
+# Install
+- name: Install Git
+  register: git_installed
+  apt: pkg=git state=present update_cache=true
+
+# Config
+- name: Add .gitconfig
+  when: git_installed is success
+  register: git_configured
+  template: src=root/.gitconfig.j2 dest=/root/.gitconfig owner=root group=root mode=660
+
+- name: Create repository
+  when: git_configured is success
+  register: git_repository_created
+  shell: git init && mv .git config.git
+  args:
+    chdir: /root
+    creates: /root/config.git
+
+- name: Set permissions
+  when: git_repository_created is success
+  file: path=/root/config.git owner=root group=root mode=700
+
+- name: Add .git
+  when: git_repository_created is success
+  register: git_link_created
+  copy:
+    'content="gitdir: /root/config.git\n"
+    dest=/.git
+    owner=root
+    group=root
+    mode=600'
+
+- name: Add default excludes
+  when: git_repository_created is success
+  register: git_excludes_added
+  lineinfile:
+    dest: /root/config.git/info/exclude
+    regexp: '{{ item.regexp }}'
+    line: '{{ item.line }}'
+    insertafter: EOF
+    create: True
+  with_items:
+    - { regexp: '^/\*$', line: '/*' }
+    - { regexp: '^!/etc$', line: '!/etc' }
+    # /usr/local/scripts
+    - { regexp: '^!/usr$', line: '!/usr' }
+    - { regexp: '^/usr/\*$', line: '/usr/*' }
+    - { regexp: '^!/usr/local$', line: '!/usr/local' }
+    - { regexp: '^/usr/local/\*$', line: '/usr/local/*' }
+    - { regexp: '^!/usr/local/scripts$', line: '!/usr/local/scripts' }
+    # /var/spool/cron/crontabs
+    - { regexp: '^!/var$', line: '!/var' }
+    - { regexp: '^/var/\*$', line: '/var/*' }
+    - { regexp: '^!/var/spool$', line: '!/var/spool' }
+    - { regexp: '^/var/spool/\*$', line: '/var/spool/*' }
+    - { regexp: '^!/var/spool/cron$', line: '!/var/spool/cron' }
+    - { regexp: '^/var/spool/cron/\*$', line: '/var/spool/cron/*' }
+    - { regexp: '^!/var/spool/cron/crontabs$', line: '!/var/spool/cron/crontabs' }
+
+- name: Init repository
+  when: git_excludes_added is success and git_link_created is success
+  shell: git add -A && git commit -m 'Making repo @system'
+  args:
+    chdir: /
+    creates: /root/config.git/refs/heads/master
+
+- name: Add autocommit task to /etc/cron.d
+  template: src=etc/cron.d/nxs-git-autocommit.j2 dest=/etc/cron.d/nxs-git-autocommit owner=root group=root mode=0640
+

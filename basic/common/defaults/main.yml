@@ -1,0 +1,13 @@
+---
+
+timezone: 'UTC'
+domain: '{{ inventory_hostname }}'
+
+dist_upgrade: false
+
+locale_default: 'en_US.UTF-8'
+locale_keymap: 'us'
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

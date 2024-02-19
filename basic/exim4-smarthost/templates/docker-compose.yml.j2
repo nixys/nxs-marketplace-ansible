@@ -1,0 +1,21 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  exim4_smarthost:
+    container_name: exim4_smarthost
+    image: tianon/exim4:{{ exim4_smarthost_docker_version }}
+    volumes:
+      - /var/apps/exim4_smarthost/volumes/conf:/etc/exim4
+    ports:
+      - {{ exim4_smarthost_docker_listen_interface }}:{{ exim4_smarthost_smtp_port }}:25
+      - {{ exim4_smarthost_docker_listen_interface }}:{{ exim4_smarthost_smtps_port }}:465
+      - {{ exim4_smarthost_docker_listen_interface }}:{{ exim4_smarthost_smtp_submission_port }}:587
+    networks:
+      vm_net:
+        ipv4_address: {{ exim4_smarthost_docker_ip }}
+    restart: always
+networks:
+  vm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ exim4_smarthost_docker_subnet }}

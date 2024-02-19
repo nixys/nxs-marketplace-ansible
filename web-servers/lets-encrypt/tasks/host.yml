@@ -1,0 +1,26 @@
+---
+
+# Install dependency
+- name: Ensure apt cache is updated
+  apt:
+    update_cache: yes
+  changed_when: false
+
+- name: Ensure needed packeges are installed.
+  apt:
+    pkg:
+     - wget
+     - gnupg2
+     - curl
+     - dnsutils
+    state: present
+
+# Include
+- include_tasks: certbot.yml
+  when: lets_encrypt_acme_client == 'certbot' 
+
+- include_tasks: getssl.yml
+  when: lets_encrypt_acme_client == 'getssl'
+
+- include_tasks: acmesh.yml
+  when: lets_encrypt_acme_client == 'acmesh'

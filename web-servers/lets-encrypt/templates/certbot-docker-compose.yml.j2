@@ -1,0 +1,18 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - {{ lets_encrypt_webroot }}:{{ lets_encrypt_webroot }}
+      - ./volumes/var/log/letsencrypt/letsencrypt.log:var/log/letsencrypt/letsencrypt.log
+    command: >-
+      certonly 
+      {{ '--dry-run' if lets_encrypt_dry_run else '' }}
+      --noninteractive --agree-tos
+      --email {{ lets_encrypt_email }}
+      --webroot -w {{ lets_encrypt_webroot }}
+      --expand -d {{ lets_encrypt_domains | join(' -d ') }} 
+    network_mode: host
+    tty: true

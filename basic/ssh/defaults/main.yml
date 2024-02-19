@@ -1,0 +1,9 @@
+---
+
+ssh_permit_root_login: no
+
+allow_users: []
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14

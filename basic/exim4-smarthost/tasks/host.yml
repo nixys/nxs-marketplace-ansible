@@ -1,0 +1,82 @@
+---
+
+# Install packages
+- name: Install packages
+  apt:
+    pkg: ['exim4','exim4-base','exim4-config','exim4-daemon-light','opendkim-tools', 'mailutils', 'mailutils-common']
+    update_cache: true
+
+# Configuration
+- name: Set default configs
+  copy: src='etc/exim4' dest='/etc/' owner=root group=Debian-exim mode=0644 directory_mode=755
+  notify:
+    - Restart Exim4
+
+- name: Set primary hostname, qualify domain, dkim selector, mail for root and client mail
+  replace:
+    dest: /etc/exim4/exim4.conf.template
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.line }}'
+  with_items:
+    - { regexp: '^(primary_hostname[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_primary_hostname }}' }
+    - { regexp: '^(qualify_domain[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_qualify_domain }}' }
+    - { regexp: '(dkim_selector[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_dkim_selector }}' }
+    - { regexp: '^(mail_for_root:\n[^\n]*\n[\s]*domains[\s]*=[\s]*).*$', line: '\1 {{ exim4_smarthost_qualify_domain }}' }
+    - { regexp: 'client-tech\@nixys\.io$', line: ' {{ exim4_smarthost_admin_mail }}' }
+  notify:
+    - Restart Exim4
+
+- name: Set network settings
+  replace:
+    dest: /etc/exim4/update-exim4.conf.conf
+    regexp: '{{ item.regexp }}'
+    replace: '{{ item.line }}'
+  with_items:
+    - { regexp: '^(dc_local_interfaces[\s]*=[\s]*).*$', line: "\\1'{{ exim4_smarthost_local_interfaces }}'" }
+    - { regexp: '^(dc_relay_nets[\s]*=[\s]*).*$', line: "\\1'{{ exim4_smarthost_relay_nets }}'" }
+  notify:
+    - Restart Exim4
+
+- name: Disable blocking private networks
+  when: not exim4_smarthost_block_private_networks
+  replace:
+    dest: /etc/exim4/exim4.conf.template
+    regexp: '^([\s]*ignore_target_hosts) = [\d\.\s:\\\/\n]*$'
+    replace: '\1 = 0.0.0.0 : 127.0.0.0/8 : 255.255.255.255'
+  notify:
+    - Restart Exim4
+
+# Security
+- name: Set permissions
+  file: path=/etc/exim4 owner=root group=Debian-exim mode=750
+
+- name: Change default ports
+  lineinfile:
+    path: /etc/default/exim4
+    regexp: '^SMTPLISTENEROPTIONS'
+    line: "SMTPLISTENEROPTIONS=-'oX {{ exim4_smarthost_smtp_port }}:{{ exim4_smarthost_smtp_submission_port }}:10025 -oP /var/run/exim4/exim.pid'"
+  notify: Restart Exim4
+
+# SPF & DKIM
+- name: Generate a SPF record
+  template:
+    src: spf.j2
+    dest: /root/spf_{{exim4_smarthost_dkim_domain }}.txt
+
+- name: Create /etc/exim4/dkim directory 
+  file: dest=/etc/exim4/dkim state=directory owner=root group=Debian-exim mode=750
+
+- name: Generate DKIM key for one domain
+  command: opendkim-genkey -D /etc/exim4/dkim/ -d "{{ exim4_smarthost_dkim_domain }}" -s "{{ exim4_smarthost_dkim_selector }}" -a
+
+- name: Copy key-file
+  copy: remote_src=True src='/etc/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.private' dest='/etc/exim4/dkim/{{ exim4_smarthost_dkim_domain }}.key' mode=0640 owner=root group=Debian-exim
+
+- name: Remove old key-file
+  file: path=/etc/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.private state=absent
+
+- name: Copy the public key to root directory for later view
+  copy: remote_src=True src='/etc/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.txt' dest='/root/dkim_{{ exim4_smarthost_dkim_domain }}.txt'
+
+- name: Remove old public key
+  file: path=/etc/exim4/dkim/{{ exim4_smarthost_dkim_selector }}.txt state=absent

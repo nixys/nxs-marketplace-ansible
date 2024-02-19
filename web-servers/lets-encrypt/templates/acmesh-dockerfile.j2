@@ -1,0 +1,20 @@
+FROM debian:stable-slim
+
+RUN apt-get update \
+  && apt-get install -y sudo wget cron \
+  && groupadd -g {{ docker_group_id }} acme \
+  && useradd -g {{ docker_group_id }} -u {{ docker_user_id }} -s /bin/bash -d /usr/local/scripts/acme acme \
+  && mkdir -p /usr/local/scripts/acme \
+  && chmod o+x /usr/local/scripts \
+  && chown -R acme: /usr/local/scripts/acme/ \
+  && chmod 750 /usr/local/scripts/acme \
+  && cd /usr/local/scripts/acme \
+  && sudo -u acme sh -c 'wget -O /usr/local/scripts/acme/acme.sh https://get.acme.sh -P /usr/local/scripts/acme' \
+  && chmod 700 /usr/local/scripts/acme/acme.sh \
+  && sudo -u acme sh -c '/usr/local/scripts/acme/acme.sh' \
+  && echo "SAVED_SL_Key='API_KEY'" >> /usr/local/scripts/acme/.acme.sh/account.conf \
+  && echo "USER_PATH='/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/local/scripts/acme/bin'" >> /usr/local/scripts/acme/.acme.sh/account.conf
+
+WORKDIR /usr/local/scripts/acme
+
+CMD ["sh"]

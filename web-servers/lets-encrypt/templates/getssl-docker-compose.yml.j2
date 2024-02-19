@@ -1,0 +1,15 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  getssl:
+    build: ./build/getssl
+    container_name: getssl
+    volumes:
+      - ./volumes/usr/local/scripts/getssl/.getssl/getssl.cfg:/usr/local/scripts/getssl/.getssl/getssl.cfg
+{% for domain in lets_encrypt_domains %}
+      - ./volumes/usr/local/scripts/getssl/.getssl/{{ domain }}/:/usr/local/scripts/getssl/.getssl/{{ domain }}/
+{% endfor %}
+      - /etc/letsencrypt/getssl:/etc/letsencrypt/getssl
+      - {{ lets_encrypt_webroot }}:{{ lets_encrypt_webroot }}
+    tty: true
+    restart: always
+    network_mode: host

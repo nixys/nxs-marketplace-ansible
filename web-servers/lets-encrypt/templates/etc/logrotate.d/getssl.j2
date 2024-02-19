@@ -1,0 +1,9 @@
+/var/log/getssl/*.log {
+       create 600 getssl getssl
+       rotate 6
+       monthly
+       missingok
+       notifempty
+       compress
+       delaycompress
+}

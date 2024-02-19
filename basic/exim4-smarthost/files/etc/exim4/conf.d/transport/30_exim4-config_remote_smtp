@@ -1,0 +1,20 @@
+
+### transport/30_exim4-config_remote_smtp
+#################################
+# This transport is used for delivering messages over SMTP connections.
+
+remote_smtp:
+  debug_print = "T: remote_smtp for $local_part@$domain"
+  driver = smtp
+.ifdef REMOTE_SMTP_HOSTS_AVOID_TLS
+  hosts_avoid_tls = REMOTE_SMTP_HOSTS_AVOID_TLS
+.endif
+.ifdef REMOTE_SMTP_HEADERS_REWRITE
+  headers_rewrite = REMOTE_SMTP_HEADERS_REWRITE
+.endif
+.ifdef REMOTE_SMTP_RETURN_PATH
+  return_path = REMOTE_SMTP_RETURN_PATH
+.endif
+.ifdef REMOTE_SMTP_HELO_FROM_DNS
+  helo_data=REMOTE_SMTP_HELO_DATA
+.endif
