@@ -1,0 +1,123 @@
+---
+
+# Check environment
+- name: "Check Ansible version"
+  assert:
+    msg: "Ansible {{ ansible_version.full }} is not supported. You should have at least Ansible {{ ansible_major_version }}.{{ ansible_minor_version }}.*"
+    that:
+      - ansible_version.major >= {{ ansible_major_version }} and ansible_version.minor >= {{ ansible_minor_version }}
+
+- name: Check OS family and version
+  fail: msg="The operating system ({{ ansible_distribution }} {{ ansible_distribution_version }}) is not supported"
+  when: ((ansible_distribution != "Debian" or (ansible_distribution_major_version|int < 11 or ansible_distribution_major_version|int > 12))) and
+        ((ansible_distribution != "Ubuntu" or (ansible_distribution_major_version|int < 20 or ansible_distribution_major_version|int > 22)))
+
+# Create system group
+- name: Create system group
+  group: 
+    name: "{{ item.www_site_name }}"
+    gid: "{{ item.www_site_id }}"
+    state: present
+  loop: "{{ www_site_name_list }}"
+
+# Create system user
+- name: Create system user
+  user:
+    name: "{{ item.www_site_name }}"
+    uid: "{{ item.www_site_id }}"
+    group: "{{ item.www_site_name }}"
+    shell: '/bin/bash'
+    home: '{{ www_site_default_www_dir }}/{{ item.www_site_name }}'
+    createhome: no
+    update_password: always
+  loop: "{{ www_site_name_list }}"
+
+- name: Create user password
+  user:
+    name: "{{ item.www_site_name }}"
+    password: "{{ lookup('password', 'creds/{{ item.www_site_name }}.pwd length=15 chars=ascii_letters,digits') | password_hash('sha512')}}"
+    update_password: always
+  when: item.www_site_password == "yes"
+  loop: "{{ www_site_name_list }}"
+
+- name: Create user password with empty password
+  user:
+    name: "{{ item.www_site_name }}"
+    password: ""
+    update_password: always
+  when: item.www_site_password == "no"
+  loop: "{{ www_site_name_list }}"
+
+# Create directories for site 
+- name: Create {{ www_site_default_www_dir }} directory
+  file: 
+    dest: "{{ www_site_default_www_dir }}/"
+    state: directory
+
+- name: Create root directory for site with privileges
+  file:
+    dest: "{{ www_site_default_www_dir }}/{{ item.www_site_name }}"
+    mode: "{{ item.mode | default('0751') }}"
+    state: directory
+    owner: "{{ item.www_site_name }}"
+    group: "{{ item.www_site_name }}"
+  loop: "{{ www_site_name_list }}"
+
+- name: Create directories
+  file:
+    dest: "{{ www_site_default_www_dir }}/{{ item.0.www_site_name }}/{{ item.1 }}"
+    mode: "{{ item.0.mode | default('0750') }}"
+    state: directory
+    owner: "{{ item.0.www_site_name }}"
+    group: "{{ item.0.www_site_name }}"
+  loop: "{{ www_site_name_list | product(['sess', 'tmp', 'upload'])| list | default('0751')}}"
+  loop_control:
+    loop_var: item
+
+# Create data and log directories with 0751 permissions
+- name: Create data and log directories
+  file:
+    dest: "{{ www_site_default_www_dir }}/{{ item.0.www_site_name }}/{{ item.1 }}"
+    mode: "{{ item.0.mode | default('0751') }}"
+    state: directory
+    owner: "{{ item.0.www_site_name }}"
+    group: "{{ item.0.www_site_name }}"
+  loop: "{{ www_site_name_list | product(['data', 'log'])| list | default('0751')}}"
+
+# Create directories for services 
+- name: Create directories for services
+  file:
+    dest: "{{ www_site_default_www_dir }}/{{ item.0.www_site_name }}/log/{{ item.1 }}"
+    mode: "{{ item.0.mode | default('0751') }}"
+    state: directory
+    owner: "{{ item.0.www_site_name }}"
+    group: "{{ item.0.www_site_name }}"
+  loop: "{{ www_site_name_list | product(['apache2', 'nginx', 'php-fpm'])| list | default('0751')}}"
+  loop_control:
+    loop_var: item
+
+# For testing with Nginx
+- name: Replace default
+  template:
+    src: templates/default
+    dest: "/etc/nginx/sites-enabled/{{ item.www_site_name }}"
+  loop: "{{ www_site_name_list }}"
+
+- name: Remove file default 
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Remove html default 
+  file:
+    path: /etc/nginx/conf.d/default.conf
+    state: absent
+
+- name: Add index.html in document root
+  template:
+    src: templates/index.html
+    dest: "{{ www_site_default_www_dir }}/{{ item.www_site_name }}/{{ www_site_document_root }}"
+    owner: "{{ item.0.www_site_name }}"
+    group: "{{ item.0.www_site_name }}"
+  loop: "{{ www_site_name_list }}"
+

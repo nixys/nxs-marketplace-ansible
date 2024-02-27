@@ -1,0 +1,21 @@
+---
+
+www_site_name_list:
+  - www_site_name: www-site-1
+    www_site_id: 10001
+    www_site_password: "no"
+  - www_site_name: www-site-2
+    www_site_id: 10002
+    www_site_password: "yes"
+  - www_site_name: www-site-3
+    www_site_id: 10003
+    www_site_password: "yes"
+
+www_site_default_www_dir: '/var/www'
+www_site_document_root: 'data'
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14
+
+
