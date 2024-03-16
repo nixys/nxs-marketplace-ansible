@@ -1,0 +1,117 @@
+---
+
+#Install pip
+- name: Check if pip is installed
+  command: pip --version
+  register: pip_check
+  ignore_errors: yes
+
+- name: Download get-pip.py
+  get_url:
+    url: https://bootstrap.pypa.io/get-pip.py
+    dest: /tmp/get-pip.py
+  when: pip_check.rc != 0
+
+- name: Install pip
+  shell: python3 /tmp/get-pip.py
+  args:
+    creates: /usr/local/bin/pip
+  when: pip_check.rc != 0
+
+- name: Remove get-pip.py
+  file:
+    path: /tmp/get-pip.py
+    state: absent
+  when: pip_check.rc != 0
+
+- name: Install PyMySQL for Python
+  pip:
+    name: PyMySQL
+
+- name: Installing Galera Cluster for MySQL
+  apt: 
+    pkg: "{{ item }}"
+    state: present
+    update_cache: true
+  with_items:
+    - galera-{{ galera_version }}
+    - mysql-wsrep-{{ mysql_wsrep_version }}
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# Make sure that NOBODY can access the server without a password
+- name: Set MySQL root password
+  community.mysql.mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    login_password: ""
+    host: localhost
+    name: root
+    password: "{{ mysql_root_pass }}"
+    state: present
+    update_password: always
+  when: empty_root_pass == true
+
+# Kill anonymous users
+- name: Removes anonymous user account for all hosts
+  community.mysql.mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_pass }}"
+    host_all: true
+    name: ''
+    state: absent
+
+# Kill other users
+- name: Remove MySQL users
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_pass }}"
+    login_db: mysql
+    query: "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+
+# Create user for SST
+- name: Create sstuser
+  community.mysql.mysql_user:
+    login_user: root
+    login_password: "{{ mysql_root_pass }}"
+    host: localhost
+    name: "{{ mysql_sst_user }}"
+    password: "{{ mysql_sst_user_pass }}"
+    priv: "*.*:ALL,GRANT"
+
+# Configure Galera Cluster for MySQL
+- name: Configure MySQL
+  template:
+    src: mysql_config.j2
+    dest: /etc/mysql/mysql.conf.d/server.cnf
+  notify:
+    - Restart MySQL
+
+- name: Configure Galera
+  template:
+    src: galera_config.j2
+    dest: /etc/mysql/mysql.conf.d/galera.cnf
+  notify:
+    - Restart MySQL
+
+- name: Stop MySQL instances
+  systemd:
+    name: mysql
+    state: stopped
+  when: new_cluster == true
+
+- name: Init cluster
+  shell: mysqld_bootstrap
+  run_once: true
+  delegate_to: "{{ groups['galera-cluster'][0] }}"
+  when: new_cluster == true
+
+- name: Wait for seed node
+  shell: sleep 30
+  when: new_cluster == true
+
+- name: Add other instances to cluster
+  systemd:
+    name: mysql
+    state: started
+  when: new_cluster == true

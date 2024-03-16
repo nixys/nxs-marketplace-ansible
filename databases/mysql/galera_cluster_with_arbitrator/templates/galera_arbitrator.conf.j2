@@ -1,0 +1,5 @@
+# garbd config file
+daemon=1
+address="gcomm://{% for host in ansible_play_hosts_all %}{{ hostvars[host].ansible_default_ipv4.address }}{% if not loop.last %},{% endif %}{% endfor %}"
+group="{{ cluster_name }}"
+log="/var/log/galera_arbitrator.log"

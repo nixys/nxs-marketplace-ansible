@@ -1,0 +1,11 @@
+[mysqld]
+
+wsrep_on=ON
+wsrep_provider=/usr/lib/galera/libgalera_smm.so
+wsrep_cluster_address=gcomm://{% for host in ansible_play_hosts_all %}{{ hostvars[host].ansible_default_ipv4.address }}{% if not loop.last %},{% endif %}{% endfor %}
+wsrep_node_name="{{ inventory_hostname }}"
+wsrep_node_address="{{ ansible_host }}"
+
+{% for param_name, param_value in galera_params.items() %}
+{{ param_name }}={{ param_value }}
+{% endfor %}

@@ -1,0 +1,8 @@
+---
+
+- name: Restart MySQL
+  systemd:
+    name: mysql
+    state: restarted
+  listen: "Restart MySQL"
+  when: new_cluster == false

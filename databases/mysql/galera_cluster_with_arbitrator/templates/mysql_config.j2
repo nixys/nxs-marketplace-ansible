@@ -1,0 +1,5 @@
+[mysqld]
+
+{% for param_name, param_value in mysql_params.items() %}
+{{ param_name }}={{ param_value }}
+{% endfor %}

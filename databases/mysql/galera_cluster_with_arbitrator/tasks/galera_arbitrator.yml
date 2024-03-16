@@ -1,0 +1,24 @@
+---
+
+- name: Installing Galera Arbitrator
+  apt:
+    pkg: "{{ item }}"
+    state: present
+    update_cache: true
+  with_items:
+    - galera-arbitrator-{{ galera_version }}
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Create Galera Arbitrator config
+  template:
+    src: galera_arbitrator.conf.j2
+    dest: /etc/galera_arbitrator.conf
+
+- name: Check if Galera Arbitrator is already running
+  shell: ps aux | grep -v grep | grep "garbd --cfg /etc/galera_arbitrator.conf"
+  register: garbd_process
+
+- name: Run Galera Arbitrator
+  command: garbd --cfg /etc/galera_arbitrator.conf
+  when: garbd_process.rc != 0

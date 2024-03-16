@@ -1,0 +1,49 @@
+---
+
+debian_pre_req_packages: ['software-properties-common', 'gpg']
+ubuntu_pre_req_packages: ['software-properties-common', 'gpg']
+
+codership_repo_keyserver: keyserver.ubuntu.com
+codership_repo_key: 8DA84635
+
+mysql_wsrep_version: 8.0
+galera_version: 4
+
+empty_root_pass: true
+mysql_root_pass: iAAJ1yaGevT2PKj
+
+mysql_sst_user: sst_user
+mysql_sst_user_pass: dlglt9pg27WzaaU
+
+# MySQL configuration
+mysql_params:
+  innodb_buffer_pool_size: "2G"
+  max_connections: "1000"
+  innodb_flush_log_at_trx_commit: "0"
+  innodb_flush_method: "O_DIRECT"
+  innodb_log_file_size: "6G"
+  max_prepared_stmt_count: "49146"
+  sort_buffer_size: "4M"
+  bulk_insert_buffer_size: "16M"
+  max_heap_table_size: "32M"
+  read_buffer_size: "2M"
+  read_rnd_buffer_size: "1M"
+
+# Galera configuration
+galera_params:
+  bind_address: "0.0.0.0"
+  wsrep_cluster_name: "galera-cluster"
+  wsrep_sst_method: "rsync"
+  wsrep_sst_auth: "{{ mysql_sst_user }}:{{ mysql_sst_user_pass }}"
+  wsrep_provider_options: "gcache.size = 1G"
+  binlog_format: "row"
+  default_storage_engine: "InnoDB"
+  innodb_autoinc_lock_mode: "2"
+
+new_cluster: true
+
+cluster_name: "galera-cluster"
+
+# Ansible version
+ansible_major_version: 2
+ansible_minor_version: 14
