@@ -1,15 +1,6 @@
 # nxs-marketplace-ansible
 
-<div id="header" align="center">
-  <img src="https://www.freepnglogos.com/uploads/logo-mysql-png/logo-mysql-mysql-logo-png-images-are-download-crazypng-21.png" width="100"/>
-  <img src="https://cdn.iconscout.com/icon/free/png-256/free-postgresql-9-1175120.png" width="100"/>
-  <img src="https://www.vectorlogo.zone/logos/php/php-vertical.svg" width="100"/>
-  <img src="https://cdn.iconscout.com/icon/free/png-256/free-nginx-3628948-3030173.png?f=webp" width="100"/>
-  <img src="https://www.vectorlogo.zone/logos/nodejs/nodejs-icon.svg" width="100"/>
-  <img src="https://www.vectorlogo.zone/logos/java/java-icon.svg" width="100"/>
-  <img src="https://www.vectorlogo.zone/logos/rabbitmq/rabbitmq-icon.svg" width="100"/>
-  <img src="https://www.vectorlogo.zone/logos/elastic/elastic-icon.svg" width="100"/>
-</div>
+![Ansible git](https://github.com/nixys/nxs-marketplace-ansible/assets/93453799/8eaac268-c644-4ef6-b325-54b56d524c44)
 
 ## Introduction
 
