@@ -1,0 +1,176 @@
+################################## INCLUDES ###################################
+
+# include /path/to/local.conf
+# include /path/to/other.conf
+# include /path/to/fragments/*.conf
+
+################################## MODULES #####################################
+
+# loadmodule /path/to/my_module.so
+# loadmodule /path/to/other_module.so
+
+################################## NETWORK #####################################
+
+{% if redis_bind and redis_deploy_method == 'host' -%}
+bind {{ redis_bind }}
+{% endif -%}
+# bind-source-addr 10.0.0.1
+protected-mode no
+# enable-protected-configs no
+# enable-debug-command no
+# enable-module-command no
+port {{ redis_port }}
+tcp-backlog 511
+# unixsocket /run/redis.sock
+# unixsocketperm 700
+timeout 0
+tcp-keepalive 300
+# socket-mark-id 0
+
+################################# GENERAL #####################################
+{% if redis_deploy_method == 'host' %}
+daemonize yes
+{% else %}
+daemonize no
+{% endif %}
+supervised auto
+pidfile {{ redis_pidfile }}
+loglevel {{ redis_loglevel }}
+logfile {{ redis_logfile }}
+# syslog-enabled no
+# syslog-ident redis
+# syslog-facility local0
+# crash-log-enabled no
+# crash-memcheck-enabled no
+databases {{ redis_databases }}
+always-show-logo no
+set-proc-title yes
+proc-title-template "{title} {listen-addr} {server-mode}"
+
+################################ SNAPSHOTTING  ################################
+
+# save ""
+{% for save in redis_save -%}
+save {{ save }}
+{% endfor -%}
+stop-writes-on-bgsave-error {{ redis_stop_writes_on_bgsave_error|string }}
+rdbcompression {{ redis_rdbcompression|string }}
+rdbchecksum {{ redis_rdbchecksum|string }}
+# sanitize-dump-payload no
+dbfilename {{ redis_db_filename|string }}
+rdb-del-sync-files no
+dir {{ redis_dir }}
+
+################################## SECURITY ###################################
+
+acllog-max-len 128
+# aclfile /etc/redis/users.acl
+{% if redis_password -%}
+requirepass {{ redis_password }}
+{% else %}
+# requirepass foobared
+{% endif -%}
+# acl-pubsub-default resetchannels
+# rename-command CONFIG ""
+
+################################### CLIENTS ####################################
+
+# maxclients 10000
+
+############################## MEMORY MANAGEMENT ################################
+
+{% if redis_maxmemory -%}
+maxmemory {{ redis_maxmemory }}
+{% endif -%}
+maxmemory-policy {{ redis_maxmemory_policy }}
+# maxmemory-samples 5
+# maxmemory-eviction-tenacity 10
+# replica-ignore-maxmemory yes
+# active-expire-effort 1
+
+############################# LAZY FREEING ####################################
+
+lazyfree-lazy-eviction no
+lazyfree-lazy-expire no
+lazyfree-lazy-server-del no
+replica-lazy-flush no
+lazyfree-lazy-user-del no
+lazyfree-lazy-user-flush no
+
+############################## APPEND ONLY MODE ###############################
+
+appendonly {{ redis_appendonly }}
+appendfilename "{{ redis_appendfilename }}"
+appenddirname "appendonlydir"
+# appendfsync always
+appendfsync {{ redis_appendfsync|string }}
+no-appendfsync-on-rewrite {{ redis_no_appendfsync_on_rewrite }}
+auto-aof-rewrite-percentage {{ redis_auto_aof_rewrite_percentage }}
+auto-aof-rewrite-min-size {{ redis_auto_aof_rewrite_min_size }}
+aof-load-truncated yes
+aof-use-rdb-preamble yes
+aof-timestamp-enabled no
+
+################################ LUA SCRIPTING  ###############################
+
+# lua-time-limit 5000
+# busy-reply-threshold 5000
+
+################################## SLOW LOG ###################################
+
+slowlog-log-slower-than {{ redis_slowlog_log_slower_than }}
+slowlog-max-len {{ redis_slowlog_max_len }}
+
+################################ LATENCY MONITOR ##############################
+
+latency-monitor-threshold 0
+
+################################ LATENCY TRACKING ##############################
+
+# latency-tracking-info-percentiles 50 99 99.9
+
+############################# EVENT NOTIFICATION ##############################
+
+notify-keyspace-events {{ redis_notify_keyspace_events }}
+
+############################### ADVANCED CONFIG ###############################
+
+hash-max-listpack-entries 512
+hash-max-listpack-value 64
+list-max-listpack-size -2
+list-compress-depth 0
+zset-max-listpack-entries 128
+zset-max-listpack-value 64
+hll-sparse-max-bytes 3000
+stream-node-max-bytes 4096
+stream-node-max-entries 100
+activerehashing yes
+client-output-buffer-limit normal {{ redis_client_output_buffer_limit_normal }}
+# client-query-buffer-limit 1gb
+# maxmemory-clients 5%
+# proto-max-bulk-len 512mb
+hz {{ redis_hz }}
+dynamic-hz yes
+rdb-save-incremental-fsync yes
+# lfu-log-factor 10
+# lfu-decay-time 1
+{% if inventory_hostname in groups['replication_servers']|default([]) %}
+slaveof {{ redis_slaveof }}
+#masterauth {{ redis_masterauth }}
+{% endif %}
+
+########################### ACTIVE DEFRAGMENTATION #######################
+
+activedefrag {{ redis_activedefrag }}
+# active-defrag-ignore-bytes 100mb
+# active-defrag-threshold-lower 10
+# active-defrag-threshold-upper 100
+# active-defrag-cycle-min 1
+# active-defrag-cycle-max 25
+# active-defrag-max-scan-fields 1000
+jemalloc-bg-thread yes
+# server_cpulist 0-7:2
+# bio_cpulist 1,3
+# aof_rewrite_cpulist 8-11
+# bgsave_cpulist 1,10-11
+# ignore-warnings ARM64-COW-BUG

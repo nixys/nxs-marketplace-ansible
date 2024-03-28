@@ -1,0 +1,52 @@
+---
+- name: "Create lib directory for instance:"
+  file:
+    path: "{{ redis_cluster_dir }}"
+    state: directory
+    owner: redis
+    group: redis
+    mode: 0755
+  tags:
+  - setup_redis
+  - create_nodes
+
+- name: "Set Redis configuration:"
+  template:
+    src: redis.conf_cluster.j2
+    dest: "/etc/redis/{{ redis_cluster_config }}"
+    owner: redis
+    group: redis
+    mode: 0640
+  tags:
+  - setup_redis
+  - create_nodes
+
+- name: "Set redis service"
+  template:
+    src: redis.service.j2
+    dest: "/etc/systemd/system/redis-cluster-{{ redis_cluster_role }}.service"
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Reload Systemd
+  command: systemctl daemon-reload
+  tags:
+  - setup_redis
+  - create_nodes
+
+- name: Start Redis
+  service:
+    name: redis-cluster-{{ redis_cluster_role }}
+    state: restarted
+  tags:
+  - setup_redis
+  - create_nodes
+
+- name: Enable Redis
+  service:
+    name: redis-cluster-{{ redis_cluster_role }}
+    enabled: yes
+  tags:
+  - setup_redis
+  - create_nodes

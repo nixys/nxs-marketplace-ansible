@@ -1,0 +1,74 @@
+---
+- name: "Install Redis packages"
+  apt:
+    name: '{{ item }}=*{{ redis_version | default("*") }}*'
+    state: present
+    update_cache: yes
+  become: true
+  with_items:
+    - redis-server
+    - redis-tools
+  notify:
+    - Stop Redis
+  tags:
+  - setup_redis
+  - install_redis
+  register: package_res
+  retries: 5
+  until: package_res is success
+
+- name: "Setup Master nodes:"
+  include_tasks: redis_cluster_nodes.yml
+  vars:
+    redis_cluster_role: master
+    redis_cluster_dir: "{{ redis_master_dir }}"
+    redis_cluster_config: "{{ redis_cluster_master_config }}"
+    redis_cluster_port: "{{ redis_master_port }}"
+    redis_cluster_pidfile: "{{ redis_master_pidfile }}"
+    redis_cluster_logfile: "{{ redis_master_logfile }}"
+  when:
+    - inventory_hostname in groups['master_servers']
+  tags:
+  - setup_redis
+  - create_nodes
+
+- name: "Setup Slave nodes:"
+  include_tasks: redis_cluster_nodes.yml
+  vars:
+    redis_cluster_role: slave
+    redis_cluster_dir: "{{ redis_slave_dir }}"
+    redis_cluster_config: "{{ redis_cluster_slave_config }}"
+    redis_cluster_port: "{{ redis_slave_port }}"
+    redis_cluster_pidfile: "{{ redis_slave_pidfile }}"
+    redis_cluster_logfile: "{{ redis_slave_logfile }}"
+  when:
+    - inventory_hostname in groups['replication_servers']
+  tags:
+  - setup_redis
+  - create_nodes
+
+- name: Get redis cluster info
+  command: "{{ redis_cluster_info }}"
+  register: cluster_info
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == groups['master_servers'][0]
+
+- name: Print cluster info
+  debug:
+    var: cluster_info.stdout_lines
+  when: inventory_hostname == groups['master_servers'][0]
+
+- name: Create cluster
+  command: "{{ redis_cluster_create }}"
+  when: 'inventory_hostname == groups["master_servers"][0] and cluster_info.rc == 0 and "cluster_known_nodes:1" in cluster_info.stdout_lines'
+  register: cluster_creation_result
+  tags:
+  - create_cluster
+
+- name: Print the redis cluster creation results
+  debug:
+    var: cluster_creation_result.stdout_lines
+  when: cluster_creation_result.changed and inventory_hostname == groups['master_servers'][0]
+  tags:
+  - create_cluster

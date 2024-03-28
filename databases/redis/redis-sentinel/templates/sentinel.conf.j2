@@ -1,0 +1,20 @@
+protected-mode no
+port {{ redis_sentinel_port }}
+daemonize no
+{% if redis_deploy_method == 'host' %}
+pidfile {{ redis_sentinel_pid }}
+loglevel notice
+logfile {{ redis_sentinel_logfile }}
+{% endif %}
+dir {{ redis_sentinel_dir }}
+
+sentinel monitor mymaster {{ redis_sentinel_master }} 2
+sentinel down-after-milliseconds mymaster 30000
+acllog-max-len 128
+sentinel parallel-syncs mymaster 1
+sentinel failover-timeout mymaster 180000
+sentinel deny-scripts-reconfig yes
+
+SENTINEL resolve-hostnames no
+SENTINEL announce-hostnames no
+SENTINEL master-reboot-down-after-period mymaster 0

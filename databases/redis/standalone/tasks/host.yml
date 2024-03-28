@@ -1,0 +1,74 @@
+---
+
+- name: "Install packages:"
+  apt:
+    pkg: ["apt-utils", "gpg"]
+    update_cache: true
+  tags:
+  - setup_redis
+  - install_redis
+  register: package_res
+  retries: 5
+  until: package_res is success
+
+- name: "Import a Redis GPK key from a URL:"
+  apt_key:
+    url: "{{ redis_package_link }}"
+    keyring: "{{ redis_package_gpg }}"
+  become: true
+  tags:
+  - setup_redis
+  - install_redis
+
+- name: "Add Redis repository for Debian:"
+  apt_repository:
+    repo: "{{ redis_repository }}"
+    state: present
+  when: ansible_distribution == "Debian"
+  tags:
+  - setup_redis
+  - install_redis
+
+- name: "Add Redis repository for Ubuntu:"
+  apt_repository:
+    filename: redis
+    repo: "{{ redis_repository }}"
+    state: present
+    update_cache: false
+  become: true
+  when: ansible_distribution == "Ubuntu"
+  tags:
+  - setup_redis
+  - install_redis
+
+- name: "Install Redis packages"
+  apt:
+    name: '{{ item }}=*{{ redis_version | default("*") }}*'
+    state: present
+    update_cache: yes
+  become: true
+  with_items:
+    - redis-server
+    - redis-tools
+  notify:
+    - Start Redis
+    - Enable Redis
+
+- name: "Set Redis configuration"
+  template:
+    src: "{{ item }}"
+    dest: "{{ redis_conf_file }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - redis.conf.j2
+  notify:
+    - Restart Redis
+
+- name: "Redis ACL"
+  command: redis-cli ACL SETUSER {{ item.name }} on {{ item.password }} {{ item.rules }}
+  loop:
+    "{{ redis_ACL_rules }}" 
+  tags:
+  - create_acl

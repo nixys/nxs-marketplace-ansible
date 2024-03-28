@@ -1,0 +1,20 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  redis-sentinel:
+    container_name: redis-sentinel
+    image: redis:{{ redis_docker_version }}
+    command: redis-sentinel /usr/local/etc/redis/redis.conf
+    volumes:
+      - /var/apps/redis-sentinel/volumes/conf:/usr/local/etc/redis
+    ports:
+      - {{ ansible_ssh_host | default(ansible_host) }}:{{ redis_sentinel_port }}:{{ redis_sentinel_port }}
+    networks:
+      vm_net:
+        ipv4_address: {{ redis_sentinel_docker_ip }}
+    restart: always
+networks:
+  vm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ redis_sentinel_docker_subnet }}

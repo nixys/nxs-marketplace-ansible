@@ -1,0 +1,12 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  redis-{{ redis_cluster_role }}:
+    container_name: redis-{{ redis_cluster_role }}
+    image: redis:{{ redis_docker_version }}
+    command: /usr/local/etc/redis/redis.conf
+    network_mode: 'host'
+    volumes:
+      - /var/apps/redis-{{ redis_cluster_role }}/volumes/conf:/usr/local/etc/redis
+      - /var/apps/redis-{{ redis_cluster_role }}/volumes/data:{{ redis_cluster_dir }}
+      - /var/apps/redis-{{ redis_cluster_role }}/volumes/logs:/var/log/redis
+

@@ -1,0 +1,23 @@
+version: '{{ docker_compose_file_version }}'
+services:
+  redis:
+    container_name: redis
+    image: redis:{{ redis_docker_version }}
+    command: /usr/local/etc/redis/redis.conf
+    volumes:
+      - /var/apps/redis/volumes/conf:/usr/local/etc/redis
+      - /var/apps/redis/volumes/data:{{ redis_dir }}
+      - /var/apps/redis/volumes/logs:/var/log/redis
+    ports:
+      - {{ ansible_ssh_host | default(ansible_host) }}:{{ redis_port }}:{{ redis_port }}
+    networks:
+      vm_net:
+        ipv4_address: {{ redis_docker_ip }}
+    restart: always
+networks:
+  vm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ redis_docker_subnet }}
+

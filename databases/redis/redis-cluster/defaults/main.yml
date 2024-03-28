@@ -1,0 +1,87 @@
+---
+# ansible versions
+ansible_major_version: 2
+ansible_minor_version: 14
+
+## Installation options
+redis_deploy_method: docker
+redis_version: 7.2
+redis_docker_version: 7.0.11
+redis_package_link: https://packages.redis.io/gpg
+redis_package_gpg: /usr/share/keyrings/redis-archive-keyring.gpg
+redis_repository: "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb {{ ansible_distribution_release }} main"
+
+redis_conf_file: /etc/redis/redis.conf
+redis_daemon: redis-server
+redis_master_port: 6381  
+redis_slave_port: 6382
+redis_bind: "{{'127.0.0.1 ' + ansible_host }}"
+redis_master_dir: /var/lib/redis/redis-cluster-master
+redis_slave_dir: /var/lib/redis/redis-cluster-slave
+redis_password: false
+
+## General configuration
+redis_databases: 16
+redis_master_pidfile: /var/run/redis/redis-cluster-master.pid
+redis_slave_pidfile: /var/run/redis/redis-cluster-slave.pid
+redis_loglevel: notice
+redis_slowlog_log_slower_than: 10000
+redis_slowlog_max_len: 128
+redis_maxmemory: false
+redis_maxmemory_policy: noeviction
+
+## Logging
+redis_master_logfile: '/var/log/redis/redis-cluster-master.log'
+redis_slave_logfile: '/var/log/redis/redis-cluster-slave.log'
+
+## RDB Backup
+redis_db_filename: "dump.rdb"
+redis_save:
+  - 900 1
+  - 300 10
+  - 60 10000
+redis_stop_writes_on_bgsave_error: "yes"
+redis_rdbcompression: "yes"
+redis_rdbchecksum: "yes"
+redis_appendonly: "no"
+redis_appendfilename: "appendonly.aof"
+redis_appendfsync: "everysec"
+redis_no_appendfsync_on_rewrite: "no"
+redis_auto_aof_rewrite_percentage: "100"
+redis_auto_aof_rewrite_min_size: "64mb"
+redis_notify_keyspace_events: '""'
+redis_client_output_buffer_limit_normal: 0 0 0
+redis_client_output_buffer_limit_slave: 256mb 64mb 60
+redis_client_output_buffer_limit_pubsub: 32mb 8mb 60
+redis_hz: 10
+
+## Advanced
+redis_activedefrag: "no"
+redis_masterauth: ""
+redis_slaveof: "{{ hostvars[groups['master_servers'][0]]['ansible_eth0']['ipv4']['address'] }} {{ redis_port }}"
+
+## Cluster
+redis_cluster_protected_mode: "no"
+redis_cluster_enabled: "yes"
+redis_cluster_master_config: redis-cluster-master.conf
+redis_cluster_slave_config: redis-cluster-slave.conf
+redis_cluster_node_timeout: 0
+redis_cluster_slave_validity_factor: 0
+redis_cluster_migration_barrier: 1
+redis_cluster_require_full_coverage: "yes"
+redis_cluster_allow_reads_when_down: "no"
+
+
+redis_cluster_create_master_ports: ":{{ redis_master_port }} "
+redis_cluster_create_slave_ports: ":{{ redis_slave_port }} "
+redis_cluster_info: "redis-cli -p {{ redis_master_port }} CLUSTER INFO"
+redis_cluster_create: "redis-cli -p {{ redis_master_port }} --cluster-yes --cluster create {{ groups['master_servers'] | map('extract', hostvars, ['ansible_host']) | join(redis_cluster_create_master_ports) }}:{{ redis_master_port }} {{ groups['replication_servers'] | map('extract', hostvars, ['ansible_host']) | join(redis_cluster_create_slave_ports) }}:{{ redis_slave_port }} --cluster-replicas 1"
+
+
+#ACL
+redis_ACL_rules: []
+
+# Docker
+redis_docker_subnet: 172.18.1.0/24
+redis_docker_ip: 172.18.1.2
+

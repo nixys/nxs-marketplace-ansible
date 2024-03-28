@@ -1,0 +1,55 @@
+---
+
+- name: "Install packages:"
+  apt:
+    pkg: ["apt-utils", "gpg"]
+    update_cache: true
+  tags:
+  - setup_redis
+  - install_redis
+  register: package_res
+  retries: 5
+  until: package_res is success
+
+- name: "Import a Redis GPK key from a URL:"
+  apt_key:
+    url: "{{ redis_package_link }}"
+    keyring: "{{ redis_package_gpg }}"
+  become: true
+  tags:
+  - setup_redis
+  - install_redis
+
+- name: "Add Redis repository for Debian:"
+  apt_repository:
+    repo: "{{ redis_repository }}"
+    state: present
+  when: ansible_distribution == "Debian"
+  tags:
+  - setup_redis
+  - install_redis
+
+- name: "Add Redis repository for Ubuntu:"
+  apt_repository:
+    filename: redis
+    repo: "{{ redis_repository }}"
+    state: present
+    update_cache: false
+  become: true
+  when: ansible_distribution == "Ubuntu"
+  tags:
+  - setup_redis
+  - install_redis
+
+- name: "Setup Redis Sentinel"
+  include_tasks: redis_sentinel.yml
+  tags:
+  - setup_redis
+  - sentinel_mode
+
+- name: "Redis ACL"
+  command: redis-cli ACL SETUSER {{ item.name }} on {{ item.password }} {{ item.rules }}
+  loop:
+    "{{ redis_ACL_rules }}" 
+  tags:
+  - create_acl

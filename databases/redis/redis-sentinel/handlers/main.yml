@@ -1,0 +1,14 @@
+---
+- name: Start Redis
+  systemd: name={{ redis_daemon }} state=started
+
+- name: Enable Redis
+  systemd: name={{ redis_daemon }} enabled=yes
+
+- name: Restart Redis
+  systemd: name={{ redis_daemon }} state=restarted
+
+- name: Stop Redis
+  systemd: name={{ redis_daemon }} state=stopped
+
+

@@ -1,0 +1,165 @@
+---
+# Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: yes
+
+# Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+# Docker role
+- ansible.builtin.include_role:
+    name: docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Check docker version
+- name: Get docker version
+  shell: "docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}'" 
+  register: docker_version
+  changed_when: false
+
+- debug: var=version.stdout
+
+- name: Set docker-compsoe version 3.8 for docker hier than 19.03.11
+  when: docker_version.stdout > "19.03.11"
+  set_fact:
+    docker_compose_file_version: '3.8'
+  changed_when: false
+
+- name: Set docker-compsoe version 2.0 for docker lower than 19.03.11
+  when: docker_version.stdout < "19.03.11"
+  set_fact:
+    docker_compose_file_version: '2.0'
+  changed_when: false
+
+# Check docker-compose installation
+- name: Check is docker-compose installed
+  shell: command -v docker-compose >/dev/null 2>&1
+  register: is_docker_compose_install
+  ignore_errors: yes
+
+- debug: msg="{{ is_docker_compose_install.rc }}" # it returns rc 1
+
+- debug: var=is_docker_compose_install
+
+- name: Choose docker-compose command aka "docker-compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc == 0
+  set_fact:
+    docker_command: "docker-compose"
+
+- name: Choose docker-compose command aka "docker compose"
+  ignore_errors: yes
+  when: is_docker_compose_install.rc != 0
+  set_fact:
+    docker_command: "docker compose"
+
+# Setup Redis Cluster
+- name: Set master vars
+  when: inventory_hostname in groups['master_servers']
+  set_fact:
+    redis_cluster_role: master
+    redis_cluster_dir: "{{ redis_master_dir }}"
+    redis_cluster_config: "{{ redis_cluster_master_config }}"
+    redis_cluster_port: "{{ redis_master_port }}"
+    redis_cluster_pidfile: "{{ redis_master_pidfile }}"
+    redis_cluster_logfile: "{{ redis_master_logfile }}"
+
+- name: Set slave vars
+  when: inventory_hostname in groups['replication_servers']
+  set_fact:
+    redis_cluster_role: slave
+    redis_cluster_dir: "{{ redis_slave_dir }}"
+    redis_cluster_config: "{{ redis_cluster_slave_config }}"
+    redis_cluster_port: "{{ redis_slave_port }}"
+    redis_cluster_pidfile: "{{ redis_slave_pidfile }}"
+    redis_cluster_logfile: "{{ redis_slave_logfile }}"
+
+# Create directories
+- name: Create conf directory
+  file:
+    path: '/var/apps/redis-{{ redis_cluster_role }}/volumes/conf'
+    state: directory
+    mode: '0751'
+    owner: root
+    group: root
+
+- name: Create data directory
+  file:
+    path: '/var/apps/redis-{{ redis_cluster_role }}/volumes/data'
+    state: directory
+    mode: '0751'
+    owner: 999
+    group: 999
+
+- name: Create logs directory
+  file:
+    path: '/var/apps/redis-{{ redis_cluster_role }}/volumes/logs'
+    state: directory
+    mode: '0751'
+    owner: 999
+    group: 999
+
+- name: Add redis config
+  template:
+    src: redis.conf_cluster.j2
+    dest: '/var/apps/redis-{{ redis_cluster_role }}/volumes/conf/redis.conf'
+    owner: root
+    group: root
+
+# Setup Docker-compose file
+- name: Add docker-compose.yml
+  template:
+    src: 'docker-compose.yml.j2'
+    dest: '/var/apps/redis-{{ redis_cluster_role }}/docker-compose.yml'
+
+- name: Docker-compose up
+  shell:
+    cmd: "{{ docker_command }} -f /var/apps/redis-{{ redis_cluster_role }}/docker-compose.yml up -d"
+
+- name: Get redis cluster info
+  community.docker.docker_container_exec:
+    container: "redis-master"
+    command: "{{ redis_cluster_info }}"
+  register: cluster_info
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname == groups['master_servers'][0]
+
+- name: Print cluster info
+  debug:
+    var: cluster_info.stdout_lines
+  when: inventory_hostname == groups['master_servers'][0]
+
+- name: Create cluster
+  community.docker.docker_container_exec:
+    container: "redis-master"
+    command: "{{ redis_cluster_create }}"
+  when: 'inventory_hostname == groups["master_servers"][0] and cluster_info.rc == 0 and "cluster_known_nodes:1" in cluster_info.stdout_lines'
+  register: cluster_creation_result
+  tags:
+  - create_cluster
+
+- name: Print the redis cluster creation results
+  debug:
+    var: cluster_creation_result.stdout_lines
+  when: cluster_creation_result.changed and inventory_hostname == groups['master_servers'][0]
+  tags:
+  - create_cluster
+
+- name: Set container name
+  set_fact:
+    redis_container_name: redis-master
+    redis_container_port: "{{ redis_master_port }}"
+
+- name: "Redis ACL"
+  community.docker.docker_container_exec:
+    container: "{{ redis_container_name }}"
+    command: redis-cli -p {{ redis_container_port }} ACL SETUSER {{ item.name }} on {{ item.password }} {{ item.rules }}
+  loop:
+    "{{ redis_ACL_rules }}"
+  when: inventory_hostname == groups['master_servers'][0]
