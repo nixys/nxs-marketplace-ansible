@@ -1,0 +1,22 @@
+version: '3'
+services:
+  percona:
+    container_name: {{ mysql_docker_container_name }}
+    image: percona/percona-xtradb-cluster:{{ mysql_xtradb_docker_version }}
+    network_mode: host
+    environment:
+      MYSQL_ROOT_PASSWORD: {{ mysql_xtradb_root_password }}
+      CLUSTER_NAME: {{ mysql_xtradb_cluster_name }}
+{% if percona_bootstrap|default(false) == false %}
+      CLUSTER_JOIN: "{% for item in groups['xtradb_nodes_group'] -%} {{ hostvars[item]['ansible_host'] }}:4567{% if not loop.last %},{% endif %}{%- endfor %}"
+{% endif %}
+    volumes:
+      - db_data:/var/lib/mysql
+{% if mysql_xtradb_host_version|default(80) == 80 %}
+      - /var/apps/percona/volumes/conf:/etc/mysql/mysql.conf.d/
+{% endif %}
+{% if mysql_xtradb_host_version|default(80) == 57 %}
+      - /var/apps/percona/volumes/conf:/etc/mysql/percona-xtradb-cluster.conf.d/
+{% endif %}
+volumes:
+  db_data:

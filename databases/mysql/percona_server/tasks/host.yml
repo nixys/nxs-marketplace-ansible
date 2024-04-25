@@ -1,0 +1,101 @@
+---
+- name: Ensure apt cache is updated
+  apt:
+    update_cache: true
+  changed_when: false
+
+- name: Ensure MySQL Python libraries and needed packages are installed
+  apt:
+   name:
+     - python3-mysqldb
+     - wget
+     - gnupg2
+     - curl
+     - lsb-release
+     - software-properties-common
+     - dirmngr
+   state: present
+
+- name: repository | add public key
+  ansible.builtin.apt_key:
+    id: 9334A25F8507EFA5
+    keyserver: keyserver.ubuntu.com
+    state: present
+
+- name: repository | add
+  ansible.builtin.apt_repository:
+    repo: "{{ item.type }} {{ item.url }} {{ item.component }}"
+    state: present
+    update_cache: true
+  with_items: "{{ mysql_percona_server_repositories }}"
+
+- name: install | configure debconf
+  ansible.builtin.debconf:
+    name: "{{ item.name }}"
+    question: "{{ item.question }}"
+    value: "{{ item.value }}"
+    vtype: "{{ item.vtype }}"
+  with_items: "{{ mysql_percona_server_debconf_selections }}"
+  changed_when: false
+
+- name: install | configure debconf for version 8.0 (Use Legacy Authentication Method)
+  ansible.builtin.debconf:
+    name: 'percona-server-server'
+    question: 'percona-server-server/default-auth-override'
+    value: 'Use Legacy Authentication Method (Retain MySQL 5.x Compatibility)'
+    vtype: select
+  changed_when: false
+  when:
+    - mysql_percona_version is version('8.0', '==')
+    - mysql_percona_legacy_auth_method_80 | bool
+
+- name: install | dependencies
+  ansible.builtin.apt:
+    name: "{{ mysql_percona_server_dependencies }}"
+    state: "{{ apt_install_state | default('latest') }}"
+
+- name: install | additional
+  ansible.builtin.apt:
+    name: "{{ mysql_percona_server_install }}"
+    state: "{{ apt_install_state | default('latest') }}"
+
+- name: Add /etc/mysql/my.cnf
+  ansible.builtin.template:
+    src: etc/mysql/my.cnf.j2
+    dest: /etc/mysql/my.cnf
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Daemon reload
+    - Restart percona-server
+
+- name: Configure | remove (excessive) configuration files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/mysql/percona-server.cnf
+    - /etc/mysql/percona-server.conf.d
+    - /etc/mysql/mariadb.cnf
+    - /etc/mysql/mariadb.conf.d
+
+- name: Start and enable service
+  ansible.builtin.service:
+    name: mysql
+    state: "{{ service_default_state | default('started') }}"
+    enabled: "{{ service_default_enabled | default(true) | bool }}"
+
+- name: Add /root/.my.cnf
+  template:
+    src: root/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Set permissions
+  file: path=/etc/mysql owner=root group=mysql mode=0750
+  notify:
+    - Daemon reload
+    - Restart percona-server

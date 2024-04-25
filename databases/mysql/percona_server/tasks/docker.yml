@@ -1,0 +1,74 @@
+---
+#Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: true
+
+#Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+#Docker role
+- ansible.builtin.include_role:
+    name: docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+#Create directories
+- name: Create MySQL directories
+  ansible.builtin.file:
+    path: "{{ mysql_docker_directory_for_volumes }}/{{ mysql_docker_container_name }}/volumes/{{ item }}"
+    state: directory
+    recurse: yes
+    owner: "{{ 1001 if mysql_percona_version >= 8.0 else 999 }}"
+    group: "{{ 1001 if mysql_percona_version >= 8.0 else 999 }}"
+  loop:
+    - "conf"
+    - "data"
+    - "logs"
+  when: mysql_percona_version >= 8.0 or mysql_percona_version == 5.7
+
+- name: Add MySQL config
+  template:
+    src: etc/mysql/my.cnf.j2
+    dest: "{{mysql_docker_directory_for_volumes}}/{{ mysql_docker_container_name }}/volumes/conf/my.cnf"
+    owner: root
+    group: root
+
+- name: Add /root/.my.cnf
+  template:
+    src: root/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Create Docker network
+  docker_network:
+    name: "{{ mysql_docker_network_name }}"
+    state: present
+    ipam_config:
+      - subnet: "{{ mysql_docker_subnet }}"
+
+- name: Run Percona MySQL in Docker
+  docker_container:
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+    image: "percona:{{ mysql_percona_version }}"
+    name: "{{ mysql_docker_container_name }}"
+    network_mode: "{{ mysql_docker_network_name }}"
+    networks:
+      - name: "{{ mysql_docker_network_name }}"
+        ipv4_address: "{{ mysql_docker_ip }}"
+    ports:
+      - "{{ mysql_port }}:3306"
+    pull: true
+    recreate: true
+    restart_policy: always
+    state: started
+    volumes:
+      - "{{ mysql_docker_directory_for_volumes }}/{{ mysql_docker_container_name }}/volumes/conf/my.cnf:/etc/my.cnf"
+      - "{{ mysql_docker_directory_for_volumes }}/{{ mysql_docker_container_name }}/volumes/data:/var/lib/mysql"
+      - "{{ mysql_docker_directory_for_volumes }}/{{ mysql_docker_container_name }}/volumes/logs:/var/log/mysql"

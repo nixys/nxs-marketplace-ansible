@@ -1,0 +1,121 @@
+# {{ ansible_managed }}
+
+[client]
+socket={{ mysql_xtradb_socket }}
+
+[mysqld]
+
+# GENERAL #####
+{% if mysql_xtradb_socket %}socket={{ mysql_xtradb_socket }}
+{% else %}
+socket={{ mysql_xtradb_socket }}
+{% endif %}
+
+user={{ mysql_xtradb_user }}
+datadir={{ mysql_xtradb_datadir }}
+
+{% if mysql_xtradb_log_warnings %}log_warnings={{ mysql_xtradb_log_warnings }}{% endif %}
+
+{% if mysql_xtradb_slow_query_log %}slow_query_log={{ mysql_xtradb_slow_query_log }}{% endif %}
+
+{% if mysql_xtradb_long_query_time %}long_query_time={{ mysql_xtradb_long_query_time }}{% endif %}
+
+{% if mysql_xtradb_max_connections %}max_connections={{ mysql_xtradb_max_connections }}{% endif %}
+
+{% if mysql_xtradb_max_user_connections %}max_user_connections={{ mysql_xtradb_max_user_connections }}{% endif %}
+
+{% if mysql_xtradb_max_allowed_packet %}max_allowed_packet={{ mysql_xtradb_max_allowed_packet }}{% endif %}
+
+{% if mysql_xtradb_max_heap_table_size %}max_heap_table_size={{ mysql_xtradb_max_heap_table_size }}{% endif %}
+
+{% if mysql_xtradb_query_cache_size %}query_cache_size={{ mysql_xtradb_query_cache_size }}{% endif %}
+
+{% if mysql_xtradb_sort_buffer_size %}sort_buffer_size={{ mysql_xtradb_sort_buffer_size }}{% endif %}
+
+{% if mysql_xtradb_tmp_table_size %}tmp_table_size={{ mysql_xtradb_tmp_table_size }}{% endif %}
+
+{% if mysql_xtradb_read_buffer_size %}read_buffer_size={{ mysql_xtradb_read_buffer_size }}{% endif %}
+
+{% if mysql_xtradb_read_rnd_buffer_size %}read_rnd_buffer_size={{ mysql_xtradb_read_rnd_buffer_size }}{% endif %}
+
+{% if mysql_xtradb_join_buffer_size %}join_buffer_size={{ mysql_xtradb_join_buffer_size }}{% endif %}
+
+{% if mysql_xtradb_table_definition_cache %}table_definition_cache={{ mysql_xtradb_table_definition_cache }}{% endif %}
+
+{% if mysql_xtradb_table_open_cache %}table_open_cache={{ mysql_xtradb_table_open_cache }}{% endif %}
+
+{% if mysql_xtradb_table_open_cache_instances %}table_open_cache_instances={{ mysql_xtradb_table_open_cache_instances }}{% endif %}
+
+{% if mysql_xtradb_character_set_server %}character_set_server={{ mysql_xtradb_character_set_server }}{% endif %}
+
+{% if mysql_xtradb_collation_server %}collation_server={{ mysql_xtradb_collation_server }}{% endif %}
+
+
+{% if mysql_xtradb_skip_name_resolve %}# Skip reverse DNS lookup of clients
+skip_name_resolve={{ mysql_xtradb_skip_name_resolve }}{% endif %}
+
+{% if mysql_xtradb_default_storage_engine %}default_storage_engine={{ mysql_xtradb_default_storage_engine }}{% endif %}
+
+
+# INNODB options #####
+{% if mysql_xtradb_innodb_strict_mode %}innodb_strict_mode={{ mysql_xtradb_innodb_strict_mode }}{% endif %}
+
+{% if mysql_xtradb_innodb_file_format_check %}innodb_file_format_check={{ mysql_xtradb_innodb_file_format_check }}{% endif %}
+
+{% if mysql_xtradb_innodb_file_format %}innodb_file_format={{ mysql_xtradb_innodb_file_format }}{% endif %}
+
+{% if mysql_xtradb_innodb_buffer_pool_size %}innodb_buffer_pool_size={{ mysql_xtradb_innodb_buffer_pool_size }}{% endif %}
+
+{% if mysql_xtradb_innodb_buffer_pool_instances %}innodb_buffer_pool_instances={{ mysql_xtradb_innodb_buffer_pool_instances }}{% endif %}
+
+{% if mysql_xtradb_innodb_file_per_table %}innodb_file_per_table={{ mysql_xtradb_innodb_file_per_table }}{% endif %}
+
+{% if mysql_xtradb_innodb_flush_log_at_trx_commit %}innodb_flush_log_at_trx_commit={{ mysql_xtradb_innodb_flush_log_at_trx_commit }}{% endif %}
+
+{% if mysql_xtradb_innodb_log_buffer_size %}innodb_log_buffer_size={{ mysql_xtradb_innodb_log_buffer_size }}{% endif %}
+
+{% if mysql_xtradb_innodb_log_file_size %}innodb_log_file_size={{ mysql_xtradb_innodb_log_file_size }}{% endif %}
+
+
+{% if mysql_xtradb_innodb_autoinc_lock_mode %}# This InnoDB autoincrement locking mode is a requirement for Galera
+innodb_autoinc_lock_mode={{ mysql_xtradb_innodb_autoinc_lock_mode }}{% endif %}
+
+
+# REPLICATION SPECIFIC #####
+
+{% if mysql_xtradb_binlog_format %}# In order for Galera to work correctly binlog format should be ROW
+binlog_format={{ mysql_xtradb_binlog_format }}{% endif %}
+
+
+# WSREP options #####
+
+# Path to Galera library
+wsrep_provider={{ mysql_xtradb_wsrep_provider }}
+
+# Node address
+wsrep_node_address={{ mysql_xtradb_bind_address }}
+
+# Node name
+wsrep_node_name={{ inventory_hostname }}
+
+# Cluster name
+wsrep_cluster_name={{ mysql_xtradb_cluster_name }}
+
+# Cluster connection URL contains the IPs of node#1, node#2 and node#3
+wsrep_cluster_address={{ mysql_xtradb_wsrep_cluster_address }}
+
+# SST method
+wsrep_sst_method={{ mysql_xtradb_wsrep_sst_method }}
+
+# Authentication for SST method
+{% if mysql_xtradb_host_version == 57 %}
+wsrep_sst_auth={{ mysql_xtradb_sst_user }}:{{ mysql_xtradb_sst_password }}
+{% endif %}
+
+{% if mysql_xtradb_host_version == 80 %}
+pxc-encrypt-cluster-traffic=OFF
+{% endif %}
+
+{% if mysql_xtradb_pxc_strict_mode %}# pxc_strict_mode allowed values: DISABLED,PERMISSIVE,ENFORCING,MASTER
+# Set ENFORCING to block the use of experimental and unsupported features in Percona XtraDB Cluster
+pxc_strict_mode={{ mysql_xtradb_pxc_strict_mode }}{% endif %}

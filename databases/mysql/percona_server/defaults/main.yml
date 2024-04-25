@@ -1,0 +1,96 @@
+---
+ansible_major_version: 2
+ansible_minor_version: 14
+
+mysql_deploy_method: docker
+mysql_percona_version: 5.7
+
+#Basic settings
+mysql_port: 3306
+mysql_bind_address: 0.0.0.0
+mysql_root_password: 'Xs2tF2FXU9'
+mysql_percona_legacy_auth_method_80: false
+
+#Docker Settings
+mysql_docker_network_name: percona-network
+mysql_docker_container_name: percona
+mysql_docker_subnet: 172.18.4.0/24
+mysql_docker_ip: 172.18.4.2
+mysql_docker_directory_for_volumes: /var/apps
+
+#Fine Tuning
+mysql_max_allowed_packet: 32M
+mysql_thread_stack: 512K
+mysql_thread_cache_size: 64
+mysql_max_connections: 100
+mysql_open_files_limit: 8192
+mysql_sql_mode: '"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"'
+mysql_character_set_server: 'utf8'
+mysql_collation_server: 'utf8_unicode_ci'
+
+#InnoDB
+mysql_innodb_buffer_pool_size: 2G
+mysql_innodb_file_per_table: yes
+mysql_innodb_flush_log_at_trx_commit: no
+mysql_innodb_flush_method: no
+mysql_transaction_isolation: no
+
+#Installation xtrabackup
+mysql_percona_server_install:
+  - "percona-xtrabackup{{ '-80' if mysql_percona_version is version('8', '>=') else '-24' if mysql_percona_version is version('5.7', '>=') else '' }}"
+mysql_percona_server_version_deb_prefix: "-{{ mysql_percona_version }}"
+mysql_percona_server_version_deb: "{{ '' if mysql_percona_version is version('8.0', '==') else mysql_percona_server_version_deb_prefix }}"
+mysql_percona_server_repositories: "{{ mysql_percona_server_repositories_8 if mysql_percona_version is version('8.0', '==') else mysql_percona_server_repositories_5 }}"
+
+#Percona repositories for MySQL 5.7
+mysql_percona_server_repositories_5:
+  - type: deb
+    url: "http://repo.percona.com/apt {{ ansible_distribution_release }}"
+    component: main
+  - type: deb-src
+    url: "http://repo.percona.com/apt {{ ansible_distribution_release }}"
+    component: main
+
+#Percona repositories for MySQL 8.0
+mysql_percona_server_repositories_8:
+  - type: deb
+    url: "http://repo.percona.com/ps-80/apt {{ ansible_distribution_release }}"
+    component: main
+  - type: deb-src
+    url: "http://repo.percona.com/ps-80/apt {{ ansible_distribution_release }}"
+    component: main
+  - type: deb
+    url: "http://repo.percona.com/tools/apt {{ ansible_distribution_release }}"
+    component: main
+  - type: deb-src
+    url: "http://repo.percona.com/tools/apt {{ ansible_distribution_release }}"
+    component: main
+
+mysql_percona_server_debconf_selections:
+  - name: "percona-server-server{{ mysql_percona_server_version_deb }}"
+    question: percona-server-server/root_password
+    value: "{{ mysql_root_password }}"
+    vtype: password
+  - name: "percona-server-server{{ mysql_percona_server_version_deb }}"
+    question: percona-server-server/root_password_again
+    value: "{{ mysql_root_password }}"
+    vtype: password
+  # 5.7
+  - name: "percona-server-server{{ mysql_percona_server_version_deb }}"
+    question: "percona-server-server{{ mysql_percona_server_version_deb }}/root-pass"
+    value: "{{ mysql_root_password }}"
+    vtype: password
+  - name: "percona-server-server{{ mysql_percona_server_version_deb }}"
+    question: "percona-server-server{{ mysql_percona_server_version_deb }}/re-root-pass"
+    value: "{{ mysql_root_password }}"
+    vtype: password
+
+mysql_percona_server_dependencies:
+  - "percona-server-client{{ mysql_percona_server_version_deb }}"
+  - "percona-server-server{{ mysql_percona_server_version_deb }}"
+  - "{{ mysql_percona_server_libmysqlclient_map[mysql_percona_version] }}"
+  - "python{{ ansible_python_version is version('3', '>=') | ternary('3', '') }}-mysqldb"
+
+mysql_percona_server_libmysqlclient_map:
+  5.7: libperconaserverclient20
+  8.0: libperconaserverclient21

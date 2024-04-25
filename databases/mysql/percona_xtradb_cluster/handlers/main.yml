@@ -1,0 +1,6 @@
+---
+- name: Daemon reload
+  command: systemctl daemon-reload
+
+- name: Restart percona-server
+  service: name=mysql state=restarted

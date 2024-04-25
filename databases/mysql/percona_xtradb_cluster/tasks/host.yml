@@ -1,0 +1,138 @@
+---
+- name: Ensure apt cache is updated
+  apt:
+    update_cache: true
+  changed_when: false
+
+- name: Ensure MySQL Python libraries and needed packages are installed
+  apt:
+    name:
+     - python3-mysqldb
+     - wget
+     - gnupg2
+     - curl
+     - lsb-release
+     - software-properties-common
+     - dirmngr
+    state: present
+
+- name: Download the repository package
+  get_url:
+    url: {{ mysql_xtradb_repo_baseurl }}/percona-release_latest.generic_all.deb
+    dest: /tmp/percona-release_latest.generic_all.deb
+
+- name: Install the package with dpkg
+  apt:
+    deb: /tmp/percona-release_latest.generic_all.deb
+
+- name: Refresh the local cache
+  apt:
+    update_cache: yes
+
+- name: Enable the release repository for Percona XtraDB Cluster
+  command: percona-release setup pxc{{ mysql_xtradb_host_version }}
+
+- name: Install Percona XtraDB Cluster 8.0
+  apt:
+    name: percona-xtradb-cluster
+    state: present
+  when: mysql_xtradb_host_version == 80
+
+- name: Install Percona XtraDB Cluster 5.7
+  apt:
+    name: percona-xtradb-cluster-{{ mysql_xtradb_host_version }}
+    state: present
+  when: mysql_xtradb_host_version == 57
+
+- name: Restart {{ mysql_xtradb_service }}
+  service:
+    name: "{{ mysql_xtradb_service }}"
+    state: restarted
+
+- name: Secure the MySQL root user for localhost
+  mysql_user:
+    login_user: "{{ mysql_xtradb_root_user }}"
+    login_password: "{{ mysql_xtradb_root_password }}"
+    name: "{{ mysql_xtradb_root_user }}"
+    host: "{{ item }}"
+  with_items:
+    - "::1"
+    - "127.0.0.1"
+    - "localhost"
+    - "{{ mysql_xtradb_bind_address }}"
+
+- name: Create SST user
+  mysql_user:
+    login_user: "{{ mysql_xtradb_root_user }}"
+    login_password: "{{ mysql_xtradb_root_password }}"
+    user: "{{ mysql_xtradb_sst_user }}"
+    password: "{{ mysql_xtradb_sst_password }}"
+    priv: "*.*:grant,reload,lock tables,process,replication client"
+  #  host: "{{ item }}"
+  # with_items:
+  #   - "::1"
+  #   - "127.0.0.1"
+  #   - "localhost"
+  #   - "%"
+
+- name: Stopping {{ mysql_xtradb_service }}
+  service:
+    name: "{{ mysql_xtradb_service }}"
+    state: stopped
+
+- name: Generate configuration PX80
+  template:
+    src:  etc/mysql/xtradb.cnf.j2
+    dest: "/etc/mysql/mysql.conf.d/{{ mysql_xtradb_config_file }}"
+    owner: root
+    group: root
+    mode: 0644
+  when: mysql_xtradb_host_version == 80
+
+- name: Generate configuration PX57
+  template:
+    src:  etc/mysql/xtradb.cnf.j2
+    dest: "/etc/mysql/percona-xtradb-cluster.conf.d/{{ mysql_xtradb_config_file }}"
+    owner: root
+    group: root
+    mode: 0644
+  when: mysql_xtradb_host_version == 57
+ 
+- name: Start the master node PX57
+  command: /etc/init.d/mysql bootstrap-pxc
+  when:
+    - mysql_xtradb_bind_address == mysql_xtradb_master_node
+    - mysql_xtradb_host_version == 57
+
+- name: Start the master node PX80
+  command: systemctl restart mysql@bootstrap.service
+  when:
+    - mysql_xtradb_bind_address == mysql_xtradb_master_node
+    - mysql_xtradb_host_version == 80
+
+- name: Start the slave nodes
+  service:
+    name: "{{ mysql_xtradb_service }}"
+    state: started
+  when:
+    - mysql_xtradb_bind_address != mysql_xtradb_master_node
+
+- name: Add /root/.my.cnf
+  template:
+    src: root/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Set permissions
+  file: path=/etc/mysql owner=root group=mysql mode=0750
+  notify:
+    - Daemon reload
+
+# - name: Restart Master {{ mysql_xtradb_service }}
+#   service:
+#     name: "{{ mysql_xtradb_service }}"
+#     state: restarted
+#   when:
+#     - mysql_xtradb_bind_address == mysql_xtradb_master_node

@@ -1,0 +1,110 @@
+---
+# Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: true
+
+# Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+# Docker role
+- ansible.builtin.include_role:
+    name: docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Create directories
+- name: Create Percona XtraDB directories
+  ansible.builtin.file:
+    path: "/var/apps/percona/volumes/{{ item }}"
+    state: directory
+    recurse: yes
+    owner: "{{ 1001 if mysql_xtradb_host_version >= 80 else 999 }}"
+    group: "{{ 1001 if mysql_xtradb_host_version >= 80 else 999 }}"
+  loop:
+    - "conf"
+    - "data"
+    - "logs"
+  when: 
+    - mysql_xtradb_host_version >= 80 or mysql_xtradb_host_version == 57
+
+- name: Add percona config
+  template:
+    src:  etc/mysql/xtradb.cnf.j2
+    dest: "/var/apps/percona/volumes/conf/percona-cluster.cnf"
+    owner: root
+    group: root
+    mode: 0644
+
+# Setup Docker-compose
+- name: Set percona_bootstrap true for first master
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+  set_fact:
+    percona_bootstrap: true
+
+- name: Add docker-compose.yml
+  template:
+    src: 'docker-compose-percona-cluster.yml.j2'
+    dest: '/var/apps/percona/docker-compose.yml'
+
+- name: Docker-compose up for first master
+  community.docker.docker_compose_v2:
+    project_src: '/var/apps/percona'
+    state: present
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+
+- name: Wait for WSREP to start on first master
+  wait_for:
+    host: localhost
+    port: 4567
+    delay: 10
+    timeout: 300
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+
+- name: Docker-compose up for other master
+  community.docker.docker_compose_v2:
+    project_src: '/var/apps/percona'
+    state: present
+  when: inventory_hostname != groups['xtradb_nodes_group'][0]
+
+- name: Wait for WSREP to start on other master
+  wait_for:
+    host: localhost
+    port: 4567
+    delay: 10
+    timeout: 300
+  when: inventory_hostname != groups['xtradb_nodes_group'][0]
+
+- name: Wait for MySQL to start
+  wait_for:
+    host: localhost
+    port: 3306
+    delay: 10
+    timeout: 300
+
+- name: Docker-compose down for first master
+  community.docker.docker_compose_v2:
+    project_src: '/var/apps/percona'
+    state: absent
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+
+- name: Set percona_bootstrap false for first master
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+  set_fact:
+    percona_bootstrap: false
+
+- name: Add docker-compose.yml for first master
+  template:
+    src: 'docker-compose-percona-cluster.yml.j2'
+    dest: '/var/apps/percona/docker-compose.yml'
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+
+- name: Docker-compose up for first master
+  community.docker.docker_compose_v2:
+    project_src: '/var/apps/percona'
+    state: present
+  when: inventory_hostname == groups['xtradb_nodes_group'][0]
+
