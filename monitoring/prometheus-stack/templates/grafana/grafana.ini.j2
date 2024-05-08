@@ -1,0 +1,43 @@
+[paths]
+data = {{ grafana_data_path }}
+logs = {{ grafana_logs_path }}
+plugins = {{ grafana_plugins_path }}
+provisioning = {{ grafana_provisioning_path }}
+
+[server]
+http_port = {{ grafana_http_port }}
+domain = {{ grafana_domain }}
+root_url = {{ grafana_root_url }}
+serve_from_sub_path = {{ grafana_serve_from_sub_path }}
+enable_gzip = {{ grafana_enable_gzip }}
+protocol = {{ grafana_protocol }}
+cert_file = {{ grafana_cert_file }}
+cert_key_file = {{ grafana_cert_key_file }}
+
+[security]
+admin_user = {{ grafana_admin_user }}
+admin_password = {{ grafana_admin_password }}
+disable_gravatar = {{ grafana_disable_gravatar }}
+
+[auth.anonymous]
+enabled = {{ grafana_anonymous_enabled }}
+
+[auth.basic]
+enabled = {{ grafana_basic_auth_enabled }}
+
+[users]
+allow_sign_up = {{ grafana_allow_sign_up }}
+auto_assign_org = {{ grafana_auto_assign_org }}
+
+[smtp]
+enabled = {{ grafana_smtp_enabled }}
+host = {{ grafana_smtp_host }}
+user = {{ grafana_smtp_user }}
+password = {{ grafana_smtp_password }}
+from_address = {{ grafana_smtp_from_address }}
+
+[alerting]
+enabled = {{ grafana_alerting_enabled }}
+
+[dashboard]
+default_home_dashboard_path = {{ grafana_default_home_dashboard_path }}

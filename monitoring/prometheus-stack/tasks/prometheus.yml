@@ -1,0 +1,65 @@
+- name: Create prometheus conf directory
+  file:
+    path: "{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/conf"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Create prometheus data directory
+  file:
+    path: "{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/data"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Create prometheus rules directory
+  file:
+    path: "{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/conf/rules"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Add prometheus.yml
+  template:
+    src:  prometheus/prometheus.yml.j2
+    dest: '{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/conf/prometheus.yml'
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Add node-exporter.yml
+  copy:
+    src:  'prometheus/rules/node-exporter.yml'
+    dest: '{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/conf/rules/node-exporter.yml'
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Run Prometheus in Docker
+  docker_container:
+    env:
+      STORAGE_TSDB_RETENTION: "{{ prometheus_rotate }}"
+      TZ: "{{ timezone }}"
+    image: "prom/prometheus:{{ prometheus_version }}"
+    name: "{{ prometheus_docker_container_name }}"
+    network_mode: "{{ ps_docker_network_name }}"
+    networks:
+      - name: "{{ ps_docker_network_name }}"
+        ipv4_address: "{{ prometheus_docker_ip }}"
+    ports:
+      - "{{ prometheus_port }}:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    pull: true
+    recreate: true
+    restart_policy: unless-stopped
+    state: started
+    user: root
+    volumes:
+      - "{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/conf:/etc/prometheus"
+      - "{{ prometheus_docker_directory_for_volumes }}/{{ prometheus_docker_container_name }}/data:/prometheus"
+      
+

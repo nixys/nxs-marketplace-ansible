@@ -1,0 +1,47 @@
+- name: Create alertmanager conf directory
+  file:
+    path: "{{ alertmanager_docker_directory_for_volumes }}/{{ alertmanager_docker_container_name }}/conf"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Create alertmanager data directory
+  file:
+    path: "{{ alertmanager_docker_directory_for_volumes }}/{{ alertmanager_docker_container_name }}/data"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Add config.yml
+  template:
+    src:  alertmanager/config.yml.j2
+    dest: '{{ alertmanager_docker_directory_for_volumes }}/{{ alertmanager_docker_container_name }}/conf/config.yml'
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Run Alertmanager in Docker
+  docker_container:
+    env:
+      TZ: "{{ timezone }}"
+    image: "prom/alertmanager:{{ alertmanager_version }}"
+    name: "{{ alertmanager_docker_container_name }}"
+    network_mode: "{{ ps_docker_network_name }}"
+    networks:
+      - name: "{{ ps_docker_network_name }}"
+        ipv4_address: "{{ alertmanager_docker_ip }}"
+    ports:
+      - "{{ alertmanager_port }}:9093"
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/etc/alertmanager/data'
+    pull: true
+    recreate: true
+    restart_policy: unless-stopped
+    state: started
+    user: root
+    volumes:
+      - "{{ alertmanager_docker_directory_for_volumes }}/{{ alertmanager_docker_container_name }}/conf:/etc/alertmanager"
+      - "{{ alertmanager_docker_directory_for_volumes }}/{{ alertmanager_docker_container_name }}/data:/etc/alertmanager/data"

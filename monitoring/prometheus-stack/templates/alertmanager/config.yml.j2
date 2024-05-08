@@ -1,0 +1,23 @@
+route:
+  group_by: ['alertname', 'job']
+
+  group_wait: '{{ alertmanager_group_wait }}'
+  group_interval: '{{ alertmanager_group_interval }}'
+  repeat_interval: '{{ alertmanager_repeat_interval }}'
+
+  receiver: '{{ alertmanager_receiver }}'
+
+receivers:
+- name: '{{ alertmanager_receiver }}'
+{% if alertmanager_receiver == 'discord' %}
+  discord_configs:
+    - webhook_url: '{{ alertmanager_discord_webhook_url }}'
+{% elif alertmanager_receiver == 'slack' %}
+  slack_configs:
+    - api_url: '{{ alertmanager_slack_api_url }}'
+      channel: '{{ alertmanager_slack_channel }}'
+{% elif alertmanager_receiver == 'mm' %}
+  mattermost_configs:
+    - api_url: '{{ alertmanager_mm_api_url }}'
+      channel: '{{ alertmanager_mm_channel }}'
+{% endif %}

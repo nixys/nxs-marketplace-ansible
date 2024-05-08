@@ -1,0 +1,65 @@
+- name: Create grafana conf directory
+  file:
+    path: "{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/conf"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Create grafana data directory
+  file:
+    path: "{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/data"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Create grafana logs directory
+  file:
+    path: "{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/logs"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Add grafana.ini
+  template:
+    src:  grafana/grafana.ini.j2
+    dest: '{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/conf/grafana.ini'
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Run Grafana in Docker
+  docker_container:
+    env:
+      TZ: "{{ timezone }}"
+#      GF_SECURITY_ADMIN_PASSWORD: 'password!'
+    image: "grafana/grafana:{{ grafana_version }}"
+    name: "{{ grafana_docker_container_name }}"
+    network_mode: "{{ ps_docker_network_name }}"
+    networks:
+      - name: "{{ ps_docker_network_name }}"
+        ipv4_address: "{{ grafana_docker_ip }}"
+    ports:
+      - "{{ grafana_port }}:3000"
+    pull: true
+    recreate: true
+    restart_policy: unless-stopped
+    state: started
+    user: root
+    volumes:
+      - "{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/conf:/etc/grafana"
+      - "{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/data:/var/lib/grafana"
+      - "{{ grafana_docker_directory_for_volumes }}/{{ grafana_docker_container_name }}/logs:/var/log/grafana"
+
+- name: Create Prometheus Datasource
+  community.grafana.grafana_datasource:
+    name: prometheus
+    grafana_url: "{{ grafana_url }}"
+    grafana_user: "{{ grafana_admin_user }}"
+    grafana_password: "{{ grafana_admin_password }}"
+    ds_type: "{{ prometheus_docker_container_name }}"
+    ds_url: "{{ ds_url }}"
+    access: proxy
+    tls_skip_verify: true

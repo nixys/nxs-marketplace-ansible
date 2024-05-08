@@ -1,0 +1,27 @@
+rule_files:
+  - '{{ prometheus_rule_files_path }}'
+
+global:
+  scrape_interval: '{{ prometheus_scrape_interval }}'
+  evaluation_interval: '{{ prometheus_evaluation_interval }}'
+  scrape_timeout: '{{ prometheus_scrape_timeout }}'
+  external_labels:
+    monitor: '{{ prometheus_external_monitor_label }}'
+
+scrape_configs:
+  - job_name: '{{ prometheus_job_name }}'
+    static_configs:
+      - targets: {{ prometheus_targets }}
+
+alerting:
+  alertmanagers:
+  - scheme: '{{ prometheus_alertmanagers_scheme }}'
+    static_configs:
+    - targets:
+      - {{ prometheus_alertmanagers_targets }}
+
+remote_write:
+  - url: '{{ prometheus_remote_write_url }}'
+
+remote_read:
+  - url: '{{ prometheus_remote_read_url }}'
