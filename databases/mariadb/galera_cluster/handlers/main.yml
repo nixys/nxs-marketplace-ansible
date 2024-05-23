@@ -1,0 +1,7 @@
+---
+- name: Restart MariaDB
+  systemd:
+    name: mariadb
+    state: restarted
+  listen: "Restart MySQL"
+  when: new_cluster == false

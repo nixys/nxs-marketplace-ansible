@@ -1,0 +1,24 @@
+version: '3'
+services:
+  {{ mariadb_docker_container_name }}:
+    container_name: {{ mariadb_docker_container_name }}
+    image: mariadb:{{ mariadb_docker_version }}
+    environment:
+      MARIADB_ROOT_PASSWORD: {{ mariadb_root_password }}
+    volumes:
+      - {{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/volumes/conf/my.cnf:/etc/my.cnf
+      - {{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/volumes/data:/var/lib/mysql
+      - {{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/volumes/logs:/var/log/mysql
+    ports:
+      - {{ mariadb_port }}:3306
+    networks:
+      {{ mariadb_docker_network_name }}:
+        ipv4_address: {{ mariadb_docker_ip }}
+    restart: always
+
+networks:
+  {{ mariadb_docker_network_name }}:
+    ipam:
+      driver: default
+      config:
+        - subnet: {{ mariadb_docker_subnet }}

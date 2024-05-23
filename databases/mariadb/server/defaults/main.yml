@@ -1,0 +1,37 @@
+---
+ansible_major_version: 2
+ansible_minor_version: 14
+
+mariadb_deploy_method: host
+mariadb_host_version: '11.4'
+mariadb_docker_version: '10.3.32-focal'
+
+# Basic settings
+mariadb_port: 3306
+mariadb_bind_address: 0.0.0.0
+mariadb_root_password: 'Xs2tF2FXU9'
+
+#Docker Settings
+mariadb_docker_network_name: mariadb-network
+mariadb_docker_container_name: mariadb
+mariadb_docker_subnet: 172.18.4.0/24
+mariadb_docker_ip: 172.18.4.2
+mariadb_docker_directory_for_volumes: /var/apps
+
+#Fine Tuning
+mariadb_max_allowed_packet: 32M
+mariadb_thread_stack: 512K
+mariadb_thread_cache_size: 64
+mariadb_max_connections: 100
+mariadb_open_files_limit: 8192
+mariadb_sql_mode: '"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"'
+mariadb_character_set_server: 'utf8mb4'
+mariadb_collation_server: 'utf8mb4_unicode_ci'
+
+#InnoDB
+mariadb_innodb_buffer_pool_size: 2G
+mariadb_innodb_file_per_table: yes
+mariadb_innodb_flush_log_at_trx_commit: no
+mariadb_innodb_flush_method: no
+mariadb_transaction_isolation: no
+

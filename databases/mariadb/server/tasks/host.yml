@@ -1,0 +1,71 @@
+---
+- name: Ensure apt cache is updated
+  apt:
+    update_cache: true
+  changed_when: false
+
+- name: Ensure MariaDB needed packages are installed
+  apt:
+   name:
+     - python3-mysqldb
+     - wget
+     - gnupg2
+     - curl
+     - lsb-release
+     - software-properties-common
+     - dirmngr
+     - apt-transport-https
+   state: present
+
+- name: Create directory /etc/apt/keyrings
+  become: true
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+
+- name: Download MariaDB release signing key
+  become: true
+  command: "curl -o /etc/apt/keyrings/mariadb-keyring.pgp 'https://mariadb.org/mariadb_release_signing_key.pgp'"
+
+- name: Add MariaDB Repository for {{ ansible_distribution }}
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/mariadb-keyring.pgp] https://mirror.truenetwork.ru/mariadb/repo/{{ mariadb_host_version }}/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} main"
+    state: present
+    update_cache: true
+
+- name: Install MariaDB packages
+  apt:
+    pkg: ['mariadb-server', 'mariadb-common', 'mariadb-backup']
+    update_cache: true
+
+- name: Add /etc/mysql/my.cnf
+  ansible.builtin.template:
+    src: etc/mysql/my.cnf.j2
+    dest: /etc/mysql/my.cnf
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Daemon reload
+    - Restart MariaDB
+
+- name: MariaDB is restart
+  service: name=mariadb state=restarted 
+
+- name: Ensure MariaDB is running
+  service: name=mariadb state=started
+
+- name: Add /root/.my.cnf
+  template:
+    src: root/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Set permissions
+  file: path=/etc/mysql owner=root group=mysql mode=0750
+  notify:
+    - Daemon reload
+    - Restart MariaDB
+

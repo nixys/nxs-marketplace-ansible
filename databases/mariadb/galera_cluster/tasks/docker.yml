@@ -1,0 +1,78 @@
+#Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: true
+
+# #Check packages is installed
+# - name: Check packages is installed
+#   package_facts:
+#     manager: "auto"
+
+# #Docker role
+# - ansible.builtin.include_role:
+#     name: docker
+#   when: "'docker-ce' not in ansible_facts.packages"
+
+#Create directories
+- name: Create MariaDB directories
+  ansible.builtin.file:
+    path: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/volumes/{{ item }}"
+    state: directory
+    recurse: yes
+    owner: "1001"
+    group: "1001"
+  loop:
+    - "conf"
+    - "data"
+    - "logs"
+
+- name: Add MariaDB config
+  template:
+    src: etc/mysql/my.cnf.j2
+    dest: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/volumes/conf/my.cnf"
+    owner: root
+    group: root
+
+- name: Add /root/.my.cnf
+  template:
+    src: root/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Configure Galera cluster
+  template:
+    src: galera.cnf.j2
+    dest: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/volumes/conf/galera.cnf"
+  # notify: Restart MariaDB
+  become: true
+
+- name: Copy Docker Compose file
+  template:
+    src: "docker-compose.yml.j2"
+    dest: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/docker-compose.yml"
+#  when: inventory_hostname == groups['mariadb'][0]
+
+- name: Run docker-compose up on master host
+  community.docker.docker_compose_v2:
+    project_src: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}"
+    files:
+      - docker-compose.yml
+  run_once: true
+  when: inventory_hostname == groups['mariadb'][0]
+
+#- name: Copy Docker Compose file other hosts
+#  template:
+#    src: "docker-compose.yml.j2"
+#    dest: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}/docker-compose.yml"
+#  when: inventory_hostname != groups['mariadb'][0]
+
+- name: Run docker-compose up other hosts
+  community.docker.docker_compose_v2:
+    project_src: "{{ mariadb_docker_directory_for_volumes }}/{{ mariadb_docker_container_name }}"
+    files:
+      - docker-compose.yml
+  when: inventory_hostname != groups['mariadb'][0]
