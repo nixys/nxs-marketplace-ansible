@@ -1,0 +1,60 @@
+---
+ansible_major_version: 2
+ansible_minor_version: 14
+timezone: "Europe/Moscow"
+deploy_method: host  # Options: 'host', 'docker'
+
+# Default configuration for Vector
+vector_data_dir: "/var/lib/vector"
+vector_mode: "agent"  # Options: 'agent', 'aggregator', 'hybrid'
+vector_api_enabled: false
+vector_api_address: "127.0.0.1:8686"
+
+# Agent configuration
+vector_agent_source_type: "demo_logs"
+vector_agent_source_format: "syslog"
+vector_agent_source_interval: 1
+
+vector_agent_transform_type: "remap"
+vector_agent_transform_inputs: 
+  - dummy_logs
+
+vector_agent_transform_source: ". = parse_syslog!(string!(.message))"
+
+vector_agent_sink_type: "console"
+vector_agent_sink_inputs: 
+  - parse_logs
+
+vector_agent_sink_encoding_codec: "json"
+
+# Aggregator configuration
+vector_aggregator_source_type: "stdin"
+
+vector_aggregator_transform_type: "remap"
+vector_aggregator_transform_inputs: 
+  - aggregator_source
+
+vector_aggregator_transform_source: ". = parse_syslog!(string!(.message))"
+
+vector_aggregator_sink_type: "console"
+vector_aggregator_sink_inputs: 
+  - aggregator_transform
+
+vector_aggregator_sink_encoding_codec: "json"
+
+# Hybrid configuration
+vector_hybrid_source_type: "demo_logs"
+vector_hybrid_source_format: "syslog"
+vector_hybrid_source_interval: 1
+
+vector_hybrid_transform_type: "remap"
+vector_hybrid_transform_inputs: 
+  - hybrid_source
+
+vector_hybrid_transform_source: ". = parse_syslog!(string!(.message))"
+
+vector_hybrid_sink_type: "console"
+vector_hybrid_sink_inputs: 
+  - hybrid_transform
+
+vector_hybrid_sink_encoding_codec: "json"

@@ -1,0 +1,26 @@
+data_dir: "{{ vector_data_dir }}"
+
+sources:
+  dummy_logs:
+    type: {{ vector_agent_source_type }}
+    format: {{ vector_agent_source_format }}
+    interval: {{ vector_agent_source_interval }}
+
+transforms:
+  parse_logs:
+    type: {{ vector_agent_transform_type }}
+    inputs: {{ vector_agent_transform_inputs }}
+    source: {{ vector_agent_transform_source }}
+
+sinks:
+  print:
+    type: {{ vector_agent_sink_type }}
+    inputs: {{ vector_agent_sink_inputs }}
+    encoding:
+      codec: {{ vector_agent_sink_encoding_codec }}
+
+api:
+  enabled: {{ vector_api_enabled }}
+  address: {{ vector_api_address }}
+
+

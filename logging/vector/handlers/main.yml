@@ -1,0 +1,12 @@
+---
+- name: Restart Vector service
+  ansible.builtin.service:
+    name: vector
+    state: started
+  when: deploy_method == 'host'
+
+- name: Restart Vector container
+  community.docker.docker_container:
+    name: vector
+    state: started
+  when: deploy_method == 'docker'

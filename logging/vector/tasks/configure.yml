@@ -1,0 +1,53 @@
+- name: Template Vector configuration file for agent
+  template:
+    src: vector_agent.yaml.j2
+    dest: /etc/vector/vector.yaml
+  when: vector_mode == 'agent'
+  notify: 
+    - "Restart Vector service"
+  when: deploy_method == 'host'
+
+- name: Template Vector configuration file for agent (in Docker)
+  template:
+    src: vector_agent.yaml.j2
+    dest: /etc/vector/vector.yaml
+  when: vector_mode == 'agent'
+  notify: 
+    - "Restart Vector container"
+  when: deploy_method == 'docker'
+
+- name: Template Vector configuration file for aggregator
+  template:
+    src: vector_aggregator.yaml.j2
+    dest: /etc/vector/vector.yaml
+  when: vector_mode == 'aggregator'
+  notify: 
+    - "Restart Vector service"
+  when: deploy_method == 'host'
+
+- name: Template Vector configuration file for aggregator (in Docker)
+  template:
+    src: vector_aggregator.yaml.j2
+    dest: /etc/vector/vector.yaml
+  when: vector_mode == 'aggregator'
+  notify: 
+    - "Restart Vector container"
+  when: deploy_method == 'docker'
+
+- name: Template Vector configuration file for hybrid
+  template:
+    src: vector_hybrid.yaml.j2
+    dest: /etc/vector/vector.yaml
+  when: vector_mode == 'hybrid'
+  notify: 
+    - "Restart Vector service"
+  when: deploy_method == 'host'
+
+- name: Template Vector configuration file for hybrid (in Docker)
+  template:
+    src: vector_hybrid.yaml.j2
+    dest: /etc/vector/vector.yaml
+  when: vector_mode == 'hybrid'
+  notify: 
+    - "Restart Vector container"
+  when: deploy_method == 'docker'

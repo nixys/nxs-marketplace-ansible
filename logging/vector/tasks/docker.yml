@@ -1,0 +1,78 @@
+# Install python3-apt needed for check packages
+- name: Ensure python3-apt libraries are installed.
+  apt:
+    name: python3-apt
+    state: present
+    update_cache: yes
+
+# Check packages is installed
+- name: Check packages is installed
+  package_facts:
+    manager: "auto"
+
+# Docker role
+- ansible.builtin.include_role:
+    name: docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Check docker version
+- name: Get docker version
+  shell: "docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}'" 
+  register: docker_version
+  changed_when: false
+
+- debug: var=version.stdout
+
+- name: Set docker-compsoe version 3.8 for docker hier than 19.03.11
+  when: docker_version.stdout > "19.03.11"
+  set_fact:
+    docker_compose_file_version: '3.8'
+  changed_when: false
+
+- name: Set docker-compsoe version 2.0 for docker lower than 19.03.11
+  when: docker_version.stdout < "19.03.11"
+  set_fact:
+    docker_compose_file_version: '2.0'
+  changed_when: false
+
+# Check docker-compose installation
+- name: Check is docker-compose installed
+  shell: command -v docker-compose >/dev/null 2>&1
+  register: is_docker_compose_install
+  ignore_errors: true
+
+- debug: msg="{{ is_docker_compose_install.rc }}" # it returns rc 1
+
+- debug: var=is_docker_compose_install
+
+- name: Choose docker-compose command aka "docker-compose"
+  ignore_errors: true
+  when: is_docker_compose_install.rc == 0
+  set_fact:
+    docker_command: "docker-compose"
+
+- name: Choose docker-compose command aka "docker compose"
+  ignore_errors: true
+  when: is_docker_compose_install.rc != 0
+  set_fact:
+    docker_command: "docker compose"
+
+# Ensure vector configuration file exists
+- name: Ensure vector configuration file exists
+  file:
+    path: /etc/vector/vector.yaml
+    state: touch
+  ignore_errors: true
+
+- name: Run Vector container
+  community.docker.docker_container:
+    name: vector
+    image: timberio/vector:nightly-debian
+    state: started
+    restart_policy: always
+    ports:
+      - "8686:8686"  # Update with the appropriate ports if needed
+    volumes:
+      - /etc/vector/vector.yaml:/etc/vector/vector.yaml:ro
+    env:
+      VECTOR_ENV: production

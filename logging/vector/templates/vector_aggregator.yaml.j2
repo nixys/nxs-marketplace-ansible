@@ -1,0 +1,22 @@
+data_dir: "{{ vector_data_dir }}"
+
+sources:
+  aggregator_source:
+    type: {{ vector_aggregator_source_type }}
+
+transforms:
+  aggregator_transform:
+    type: {{ vector_aggregator_transform_type }}
+    inputs: {{ vector_aggregator_transform_inputs }}
+    source: {{ vector_aggregator_transform_source }}
+
+sinks:
+  aggregator_sink:
+    type: {{ vector_aggregator_sink_type }}
+    inputs: {{ vector_aggregator_sink_inputs }}
+    encoding:
+      codec: {{ vector_aggregator_sink_encoding_codec }}
+
+api:
+  enabled: {{ vector_api_enabled }}
+  address: {{ vector_api_address }}

@@ -1,0 +1,24 @@
+data_dir: "{{ vector_data_dir }}"
+
+sources:
+  hybrid_source:
+    type: {{ vector_hybrid_source_type }}
+    format: {{ vector_hybrid_source_format }}
+    interval: {{ vector_hybrid_source_interval }}
+
+transforms:
+  hybrid_transform:
+    type: {{ vector_hybrid_transform_type }}
+    inputs: {{ vector_hybrid_transform_inputs }}
+    source: {{ vector_hybrid_transform_source }}
+
+sinks:
+  hybrid_sink:
+    type: {{ vector_hybrid_sink_type }}
+    inputs: {{ vector_hybrid_sink_inputs }}
+    encoding:
+      codec: {{ vector_hybrid_sink_encoding_codec }}
+
+api:
+  enabled: {{ vector_api_enabled }}
+  address: {{ vector_api_address }}

@@ -1,0 +1,13 @@
+---
+- name: Run Vector setup script
+  ansible.builtin.shell: 
+    cmd: bash -c "$(curl -L https://setup.vector.dev)"
+    creates: /etc/apt/sources.list.d/vector.list
+
+
+- name: Install Vector package
+  ansible.builtin.package:
+    name: vector
+    state: present
+
+
