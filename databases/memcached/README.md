@@ -1,4 +1,4 @@
-An Ansible role that install JDK.
+An Ansible role that configure Memcached in standalone mode.
 
 ## Supported distributions
 
@@ -38,13 +38,31 @@ Available variables listed below, along with default values (see `defaults/main.
 | ---      | ---      | ---      |
 | **ansible_major_version** | Ansible major version | 2 |
 | **ansible_minor_version** | Ansible minor version | 14 |
-| **java_openjdk_version** | JDK version | 19 |
+| **memcached_deploy_method** | Deploy method (host or docker) | docker |
+| **memcached_mode** | Deploy mode | standalone |
+| **memcached_user** | Memcached username | memcache |
+| **memcached_listen_port** | Memcached port | 11211 |
+| **memcached_listen_ip** | Memcached bind address | 127.0.0.1 |
+| **memcached_memory_limit** | Memcached max memory size | 64 |
+| **memcached_max_connections** | Memcached number of incoming connections | 1024 |
+| **memcached_conf_file** | Memcached configuration filename | /etc/memcached.conf |
+| **memcached_pid_file** | Memcached PID file | /run/memcached/memcached.pid |
+| **memcached_log_file** | Memcached logfile | /var/log/memcached.log |
+| **memcached_service** | Memcached service path | /lib/systemd/system/memcached.service |
+| **memcached_verbosity_level** | Memcached verbosity | -v |
+| **memcached_daemon** | Memcached daemon | memcached.service |
+| **memcached_compose_standalone** | Standalone docker-compose.yml | docker-compose-standalone.yml |
+| **memcached_docker_dir** | Docker Compose directory | /var/apps/memcached |
+| **memcached_docker_image** | Docker Memcached image | bitnami/memcached:1.6.28 |
+| **memcached_docker_subnet** | Docker Compose subnet | 172.18.0.0/16 |
+| **memcached_docker_ip** | Docker container IP-address | 172.18.0.11 |
+|
 
-## Inventory file example:
+## Inventory file example for standalone mode:
 
 ```
-[hosts]
-host-1 ansible_host=192.168.252.1 ansible_ssh_port=22 ansible_become=yes ansible_become_method=sudo ansible_user=$CLOUD_SSH_USER ansible_ssh_private_key_file=$PATH_TO_PRIVATE_KEY
+[memcached_standalone]
+memcached ansible_host=192.168.252.1 ansible_ssh_port=22 ansible_become=yes ansible_become_method=sudo ansible_user=$CLOUD_SSH_USER ansible_ssh_private_key_file=$PATH_TO_PRIVATE_KEY
 
 ```
 

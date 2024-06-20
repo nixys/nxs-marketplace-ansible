@@ -1,0 +1,40 @@
+---
+# Install python3-apt needed for check packages
+- name: "Ensure python3-apt libraries are installed"
+  apt:
+    name: python3-apt
+    state: latest
+    update_cache: true
+
+# Check packages is installed
+- name: "Check installed packages"
+  package_facts:
+    manager: auto
+
+# Docker role
+- include_role:
+    name: docker
+  when: "'docker-ce' not in ansible_facts.packages"
+
+# Check Docker Compose installation
+- name: "Check installed Docker Compose"
+  shell: command -v docker compose > /dev/null 2>&1
+  register: is_docker_compose_install
+  ignore_errors: true
+
+- name: "Choose 'docker compose' command"
+  when: is_docker_compose_install.rc == 0
+  set_fact:
+    docker_command: "docker compose"
+  ignore_errors: true
+
+- name: "Choose 'docker-compose' command"
+  when: is_docker_compose_install.rc != 0
+  set_fact:
+    docker_command: "docker-compose"
+  ignore_errors: true
+
+# Memcached Standalone
+- name: "Setup Memcached Standalone"
+  include_tasks: docker_standalone.yml
+  when: memcached_mode == 'standalone'

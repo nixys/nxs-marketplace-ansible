@@ -1,0 +1,33 @@
+[Unit]
+Description=memcached daemon
+After=network.target
+Documentation=man:memcached(1)
+
+[Service]
+ExecStart=/usr/share/memcached/scripts/systemd-memcached-wrapper {{ memcached_conf_file }}
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+PrivateDevices=true
+CapabilityBoundingSet=CAP_SETGID CAP_SETUID CAP_SYS_RESOURCE
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+{% if ansible_distribution_release == 'jammy' %}
+MemoryDenyWriteExecute=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+{% else %}
+##safer##MemoryDenyWriteExecute=true
+##safer##ProtectKernelModules=true
+##safer##ProtectKernelTunables=true
+##safer##ProtectControlGroups=true
+##safer##RestrictRealtime=true
+##safer##RestrictNamespaces=true
+{% endif %}
+PIDFile={{ memcached_pid_file }}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+services:
+  memcached:
+    image: {{ memcached_docker_image }}
+    container_name: memcached
+    restart: always
+    environment:
+      - MEMCACHED_LISTEN_ADDRESS={{ memcached_docker_ip }}
+      - MEMCACHED_PORT_NUMBER={{ memcached_listen_port }}
+      - MEMCACHED_CACHE_SIZE={{ memcached_memory_limit }}
+      - MEMCACHED_USERNAME={{ memcached_user }}
+      - MEMCACHED_MAX_CONNECTIONS={{ memcached_max_connections }}
+    ports:
+      - 11211:{{ memcached_listen_port }}
+    networks:
+      memcached:
+        ipv4_address: {{ memcached_docker_ip }}
+      
+networks:
+  memcached:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ memcached_docker_subnet }}

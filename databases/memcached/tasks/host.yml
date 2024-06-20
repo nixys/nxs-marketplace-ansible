@@ -1,0 +1,13 @@
+---
+- name: "Install general packages"
+  apt:
+    pkg:
+      - lsb-release
+      - net-tools
+      - telnet
+    state: latest
+    update_cache: true
+
+- name: "Setup Memcached Standalone"
+  include_tasks: host_standalone.yml
+  when: memcached_deploy_method == "host"

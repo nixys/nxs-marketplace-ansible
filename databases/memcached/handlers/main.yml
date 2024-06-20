@@ -1,0 +1,21 @@
+---
+- name: Start Memcached
+  systemd_service:
+    name: "{{ memcached_daemon }}"
+    state: started
+
+- name: Enable Memcached
+  systemd_service:
+    name: "{{ memcached_daemon }}"
+    enabled: true
+
+- name: Restart Memcached
+  systemd_service:
+    name: "{{ memcached_daemon }}"
+    state: restarted
+    daemon_reload: true
+
+- name: Stop Memcached
+  systemd_service:
+    name: "{{ memcached_daemon }}"
+    state: stopped

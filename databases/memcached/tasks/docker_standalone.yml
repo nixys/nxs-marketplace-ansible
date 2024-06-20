@@ -1,0 +1,19 @@
+---
+- name: "Create Docker Compose directory"
+  file:
+    path: "{{ memcached_docker_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0751
+
+- name: "Add docker-compose.yml"
+  template:
+    src: "{{ memcached_compose_standalone }}.j2"
+    dest: "{{ memcached_docker_dir }}/{{ memcached_compose_standalone }}"
+    owner: root
+    group: root
+    mode: 0751
+
+- name: "Run Docker Compose"
+  shell: "{{ docker_command }} -f {{ memcached_docker_dir }}/{{ memcached_compose_standalone }} up -d"

@@ -1,0 +1,28 @@
+---
+- name: "Install Memcached packages"
+  apt:
+    pkg:
+      - memcached
+      - libmemcached-tools
+    state: latest
+  notify:
+    - Start Memcached
+    - Enable Memcached
+
+- name: "Set Memcached service"
+  template:
+    src: memcached.service.j2
+    dest: "{{ memcached_service }}"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: "Set Memcached configuration"
+  template:
+    src: memcached.conf.j2
+    dest: "{{ memcached_conf_file }}"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Restart Memcached
