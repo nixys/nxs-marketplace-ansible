@@ -1,0 +1,94 @@
+---
+- name: Install required packages
+  apt:
+    name: 
+      - curl
+      - gnupg
+      - apt-transport-https
+    state: present
+    update_cache: yes
+
+- name: Add RabbitMQ signing key
+  shell: >
+    curl -1sLf "https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA"
+    | gpg --dearmor
+    | tee /usr/share/keyrings/com.rabbitmq.team.gpg
+  args:
+    creates: /usr/share/keyrings/com.rabbitmq.team.gpg
+
+- name: Add Erlang repository key
+  shell: >
+    curl -1sLf https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key
+    | gpg --dearmor
+    | tee /usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg
+  args:
+    creates: /usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg
+
+- name: Add RabbitMQ repository key
+  shell: >
+    curl -1sLf https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key
+    | gpg --dearmor
+    | tee /usr/share/keyrings/rabbitmq.9F4587F226208342.gpg
+  args:
+    creates: /usr/share/keyrings/rabbitmq.9F4587F226208342.gpg
+
+- name: Add RabbitMQ and Erlang repositories
+  copy:
+    dest: /etc/apt/sources.list.d/rabbitmq.list
+    content: |
+      ## Provides modern Erlang/OTP releases
+      deb [signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/deb/ubuntu {{ ansible_distribution_release }} main
+      deb-src [signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/deb/ubuntu {{ ansible_distribution_release }} main
+
+      # another mirror for redundancy
+      deb [signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa2.novemberain.com/rabbitmq/rabbitmq-erlang/deb/ubuntu {{ ansible_distribution_release }} main
+      deb-src [signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.gpg] https://ppa2.novemberain.com/rabbitmq/rabbitmq-erlang/deb/ubuntu {{ ansible_distribution_release }} main
+
+      ## Provides RabbitMQ
+      deb [signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-server/deb/ubuntu {{ ansible_distribution_release }} main
+      deb-src [signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-server/deb/ubuntu {{ ansible_distribution_release }} main
+
+      # another mirror for redundancy
+      deb [signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa2.novemberain.com/rabbitmq/rabbitmq-server/deb/ubuntu {{ ansible_distribution_release }} main
+      deb-src [signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.gpg] https://ppa2.novemberain.com/rabbitmq/rabbitmq-server/deb/ubuntu {{ ansible_distribution_release }} main
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Erlang packages
+  apt:
+    name:
+      - erlang-base
+      - erlang-asn1
+      - erlang-crypto
+      - erlang-eldap
+      - erlang-ftp
+      - erlang-inets
+      - erlang-mnesia
+      - erlang-os-mon
+      - erlang-parsetools
+      - erlang-public-key
+      - erlang-runtime-tools
+      - erlang-snmp
+      - erlang-ssl
+      - erlang-syntax-tools
+      - erlang-tftp
+      - erlang-tools
+      - erlang-xmerl
+    state: present
+
+- name: Install RabbitMQ
+  apt:
+    name: rabbitmq-server
+    state: present
+    update_cache: yes
+
+- name: Ensure RabbitMQ service is enabled and started
+  service:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+
+
+

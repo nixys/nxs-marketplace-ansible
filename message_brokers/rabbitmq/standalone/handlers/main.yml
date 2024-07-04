@@ -1,0 +1,12 @@
+---
+- name: Restart RabbitMQ service
+  ansible.builtin.service:
+    name: rabbitmq-server
+    state: started
+  when: deploy_method == 'host'
+
+- name: Restart RabbitMQ container
+  community.docker.docker_container:
+    name: rabbitmq
+    state: started
+  when: deploy_method == 'docker'

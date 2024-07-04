@@ -1,0 +1,31 @@
+---
+ansible_major_version: 2
+ansible_minor_version: 14
+timezone: "Europe/Moscow"
+deploy_method: docker  # Options: 'host', 'docker'
+
+# Rabbitmq variables
+rabbitmq_default_user: "guest"
+rabbitmq_default_pass: "guest"
+rabbitmq_default_vhost: "/"
+rabbitmq_ip: "0.0.0.0"
+rabbitmq_port: 5672
+loopback_users: ["guest"]
+disk_free_limit_mem_relative: 1.0
+hipe_compile: false
+vm_memory_high_watermark: 0.4
+connection_log_level: info
+mirroring_log_level: info
+cluster_partition_handling: ignore
+rabbitmq_queue_master_locator: "min-masters"
+inet_dist_listen_min: 25672
+inet_dist_listen_max: 25672
+
+
+# Docker variables
+rabbitmq_image: "rabbitmq:latest"
+rabbitmq_container_name: "rabbitmq"
+rabbitmq_ports:
+  - "5672:5672"
+  - "15672:15672"
+rabbitmq_config_dir: /etc/rabbitmq

@@ -1,0 +1,24 @@
+[
+  { rabbit, [
+    { loopback_users, <%= @loopback_users %> },
+    { tcp_listeners, [
+      {<%= @rabbitmq_ip %>, <%= @rabbitmq_port %>}
+    ]},
+    { default_user, <<"{{ rabbitmq_default_user }}">> },
+    { default_pass, <<"{{ rabbitmq_default_pass }}">> },
+    { default_vhost, <<"{{ rabbitmq_default_vhost }}">> },
+    { disk_free_limit, {mem_relative, <%= @disk_free_limit_mem_relative %>} },
+    { hipe_compile, <%= @hipe_compile %> },
+    { vm_memory_high_watermark, <%= @vm_memory_high_watermark %> },
+    { log_levels, [
+      { connection, <%= @connection_log_level %> },
+      { mirroring, <%= @mirroring_log_level %> }
+    ]},
+    { cluster_partition_handling, <%= @cluster_partition_handling %> },
+    { queue_master_locator, <<"{{ rabbitmq_queue_master_locator }}">> }
+  ]},
+  { kernel, [
+    { inet_dist_listen_min, <%= @inet_dist_listen_min %> },
+    { inet_dist_listen_max, <%= @inet_dist_listen_max %> }
+  ]}
+].
